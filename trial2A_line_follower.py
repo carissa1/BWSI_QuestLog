@@ -49,7 +49,7 @@ MIN_CONTOUR_AREA = 30
 
 # A crop window for the floor directly in front of the car
 # CROP_FLOOR = ((360, 0), (rc.camera.get_height(), rc.camera.get_width()))
-CROP_FLOOR = ((360, 0), (rc.camera.get_height(), rc.camera.get_width()))
+CROP_FLOOR = ((320, 0), (rc.camera.get_height() - 20, rc.camera.get_width()))
 
 # TODO Part 1: Determine the HSV color threshold pairs for GREEN and RED
 # Colors, stored as a pair (hsv_min, hsv_max) Hint: Lab E!
@@ -170,15 +170,29 @@ def update():
         setpoint = rc.camera.get_width() // 2
         
         present_value = contour_center[1]
-        kp = -0.003125
+        # kp = -0.003125
+        kp = -0.005
         error = setpoint - present_value
         angle = kp * error
-        rc_utils.clamp(angle, -1, 1)
+        angle = rc_utils.clamp(angle, -1, 1)
+      
+        # kp2 = -0.03
+        # speed = kp2 * error
+        # speed = rc_utils.clamp(speed, -1, 1)
+        angle_factor = abs(angle)*1.75
+        if angle_factor > 1: 
+            angle_factor = 0.9
+        elif angle_factor < -1:
+            angle_factor = -0.9
+        speed = 1 - angle_factor
+
+        print(angle_factor)
 
     # Use the triggers to control the car's speed
     rt = rc.controller.get_trigger(rc.controller.Trigger.RIGHT)
-    lt = rc.controller.get_trigger(rc.controller.Trigger.LEFT)
-    speed = rt - lt
+    # lt = rc.controller.get_trigger(rc.controller.Trigger.LEFT)
+    if rt > 0.2:
+       speed = rt
 
     rc.drive.set_speed_angle(speed, angle)
 
