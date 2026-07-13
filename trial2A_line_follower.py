@@ -49,17 +49,17 @@ MIN_CONTOUR_AREA = 30
 
 # A crop window for the floor directly in front of the car
 # CROP_FLOOR = ((360, 0), (rc.camera.get_height(), rc.camera.get_width()))
-CROP_FLOOR = ((320, 0), (rc.camera.get_height() - 20, rc.camera.get_width()))
+CROP_FLOOR = ((320, 10), (rc.camera.get_height(), rc.camera.get_width()))
 
 # TODO Part 1: Determine the HSV color threshold pairs for GREEN and RED
 # Colors, stored as a pair (hsv_min, hsv_max) Hint: Lab E!
-BLUE = ((90, 100, 100), (120, 255, 255))  # The HSV range for the color blue
+BLUE = ((90, 70, 100), (120, 255, 255))  # The HSV range for the color blue
 GREEN = ((30, 100, 100), (80, 255, 255))  # The HSV range for the color green
 RED = ((165, 50, 50), (10, 255, 255))  # The HSV range for the color red
-PURPLE = ((130, 50, 50), (160, 255, 255))
+# PURPLE = ((0, 0, 100), (160, 90, 255))
 
 # Color priority: Red >> Green >> Blue
-COLOR_PRIORITY = (PURPLE, RED, GREEN, BLUE)
+COLOR_PRIORITY = (BLUE, GREEN)
 
 # >> Variables
 speed = 0.0  # The current speed of the car
@@ -171,7 +171,7 @@ def update():
         
         present_value = contour_center[1]
         # kp = -0.003125
-        kp = -0.005
+        kp = -0.008
         error = setpoint - present_value
         angle = kp * error
         angle = rc_utils.clamp(angle, -1, 1)
