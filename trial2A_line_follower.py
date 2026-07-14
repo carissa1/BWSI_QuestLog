@@ -49,24 +49,27 @@ MIN_CONTOUR_AREA = 30
 
 # A crop window for the floor directly in front of the car
 # CROP_FLOOR = ((360, 0), (rc.camera.get_height(), rc.camera.get_width()))
-CROP_FLOOR = ((320, 10), (rc.camera.get_height(), rc.camera.get_width()))
+CROP_FLOOR = ((300, 0), (rc.camera.get_height(), rc.camera.get_width()))
 
 # TODO Part 1: Determine the HSV color threshold pairs for GREEN and RED
 # Colors, stored as a pair (hsv_min, hsv_max) Hint: Lab E!
-BLUE = ((90, 70, 100), (120, 255, 255))  # The HSV range for the color blue
+# BLUE = ((90, 100, 80), (140, 230, 240))  # The HSV range for the color blue
+BLUE = ((90, 100, 100), (120, 255, 255))
 GREEN = ((30, 100, 100), (80, 255, 255))  # The HSV range for the color green
 RED = ((165, 50, 50), (10, 255, 255))  # The HSV range for the color red
-# PURPLE = ((0, 0, 100), (160, 90, 255))
 
 # Color priority: Red >> Green >> Blue
-COLOR_PRIORITY = (BLUE, GREEN)
+COLOR_PRIORITY = (RED, GREEN, BLUE)
 
 # >> Variables
 speed = 0.0  # The current speed of the car
 angle = 0.0  # The current angle of the car's wheels
 contour_center = None  # The (pixel row, pixel column) of contour
 contour_area = 0  # The area of contour
-
+indx = 0
+last_error = 0
+OFFSET = 0
+# OFFSET = 35
 
 ########################################################################################
 # Functions
@@ -74,9 +77,10 @@ contour_area = 0  # The area of contour
 
 # [FUNCTION] Finds contours in the current color image and uses them to update 
 # contour_center and contour_area
-def update_contour():
+def update_contour(save = 'False'):
     global contour_center
     global contour_area
+    global indx
 
     image = rc.camera.get_color_image()
 
@@ -92,23 +96,25 @@ def update_contour():
         hsv = cv.cvtColor(image, cv.COLOR_BGR2HSV)
         max_contour = []
         # contours_list = []
-        for color in COLOR_PRIORITY:
-            contours = rc_utils.find_contours(image, color[0], color[1])
-            # contours_list.extend(contours)
-            for contour in contours:
-                if cv.contourArea(contour) > MIN_CONTOUR_AREA:
-                    if len(max_contour) == 0:
-                        max_contour = contour
-                    elif cv.contourArea(contour) > cv.contourArea(max_contour):
-                        max_contour = contour
-            if len(max_contour) > 0:
-                break
+        # for color in COLOR_PRIORITY:
+        contours = rc_utils.find_contours(image, BLUE[0], BLUE[1])
+        # contours = rc_utils.find_contours(image, color[0], color[1])
+        # contours_list.extend(contours)
+        for contour in contours:
+            if cv.contourArea(contour) > MIN_CONTOUR_AREA:
+                if len(max_contour) == 0:
+                    max_contour = contour
+                elif cv.contourArea(contour) > cv.contourArea(max_contour):
+                    max_contour = contour
+            # if len(max_contour) > 0:
+            #     break
 
         # contours = rc_utils.find_contours(image, BLUE[0], BLUE[1])
         # contour = rc_utils.get_largest_contour(contours, MIN_CONTOUR_AREA)
 
         if len(max_contour) > 0:
             contour_center = rc_utils.get_contour_center(max_contour)
+            contour_center = (contour_center[0] + OFFSET, contour_center[1])
             contour_area = rc_utils.get_contour_area(max_contour)
 
             rc_utils.draw_contour(image, max_contour)
@@ -116,6 +122,11 @@ def update_contour():
 
         # Display the image to the screen
         rc.display.show_color_image(image)
+
+        # if save:
+            # cv.imrite('photo_' + str(indx) + '.png', image)
+
+        indx += 1
 
 # [FUNCTION] The start function is run once every time the start button is pressed
 def start():
@@ -153,6 +164,7 @@ def update():
     """
     global speed
     global angle
+    global last_error
     
     rc.drive.set_max_speed(0.8)
 
@@ -171,22 +183,39 @@ def update():
         
         present_value = contour_center[1]
         # kp = -0.003125
+        # -0.008
+        # kp = -0.003
+        # kd = -0.0003
+        # kp = -0.012
+        # kd = -0.00015
         kp = -0.008
+        kd = -0.0004
         error = setpoint - present_value
-        angle = kp * error
+        angle = kp * error + kd * (error - last_error)/rc.get_delta_time()
         angle = rc_utils.clamp(angle, -1, 1)
-      
+        last_error = error
+
         # kp2 = -0.03
         # speed = kp2 * error
         # speed = rc_utils.clamp(speed, -1, 1)
         angle_factor = abs(angle)*1.75
         if angle_factor > 1: 
-            angle_factor = 0.9
+            angle_factor = 0.8
         elif angle_factor < -1:
-            angle_factor = -0.9
+            angle_factor = -0.8
         speed = 1 - angle_factor
-
-        print(angle_factor)
+        
+    if rc.controller.is_released(rc.controller.Button.A):
+        kp += 0.0005
+    if rc.controller.is_released(rc.controller.Button.A):
+        kp -= 0.0005
+    if rc.controller.is_released(rc.controller.Button.X):
+        kd += 0.00005
+    if rc.controller.is_released(rc.controller.Button.Y):
+        kd -= 0.00005
+    
+    # rc.drive.set_max_speed(0.2)
+        # print(angle_factor)
 
     # Use the triggers to control the car's speed
     rt = rc.controller.get_trigger(rc.controller.Trigger.RIGHT)
@@ -196,16 +225,15 @@ def update():
 
     rc.drive.set_speed_angle(speed, angle)
 
-    # Print the current speed and angle when the A button is held down
-    if rc.controller.is_down(rc.controller.Button.A):
-        print("Speed:", speed, "Angle:", angle)
+    print("SPEED: ", speed)
+    print("ANGLE: ", angle)
 
     # Print the center and area of the largest contour when B is held down
-    if rc.controller.is_down(rc.controller.Button.B):
-        if contour_center is None:
-            print("No contour found")
-        else:
-            print("Center:", contour_center, "Area:", contour_area)
+    # if rc.controller.is_down(rc.controller.Button.B):
+    #     if contour_center is None:
+    #         print("No contour found")
+    #     else:
+    #         print("Center:", contour_center, "Area:", contour_area)
 
 # [FUNCTION] update_slow() is similar to update() but is called once per second by
 # default. It is especially useful for printing debug messages, since printing a 
@@ -229,6 +257,8 @@ def update_slow():
             s = ["-"] * 32
             s[int(contour_center[1] / 20)] = "|"
             print("".join(s) + " : area = " + str(contour_area))
+
+    update_contour(True)
 
 
 ########################################################################################
