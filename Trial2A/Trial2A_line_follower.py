@@ -216,12 +216,13 @@ def update():
         # kp2 = -0.03
         # speed = kp2 * error
         # speed = rc_utils.clamp(speed, -1, 1)
-        angle_factor = abs(angle)*1.75
-        if angle_factor > 1: 
-            angle_factor = 0.8
-        elif angle_factor < -1:
-            angle_factor = -0.8
-        speed = 1 - angle_factor
+        # angle_factor = abs(angle)*1.75
+        # if angle_factor > 1: 
+        #     angle_factor = 0.8
+        # elif angle_factor < -1:
+        #     angle_factor = -0.8
+        # speed = 1 - angle_factor
+        speed = 1
         
     if rc.controller.was_pressed(rc.controller.Button.B):
         kp += 0.0005
