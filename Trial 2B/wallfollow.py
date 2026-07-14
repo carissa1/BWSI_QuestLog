@@ -128,9 +128,7 @@ def update():
 
     # ---- Pick a steering error based on which wall(s) are visible this frame ----
     if have_right and have_left:
-        # Both walls: aim for the center of the corridor. Using the DIFFERENCE between
-        # the two sides (rather than an absolute target distance) automatically adapts
-        # to narrow or wide corridors without needing separate tuning for each.
+
         error = (right_pred - left_pred) / 2
         kp, kd = KP_CENTER, KD_CENTER
     elif have_right:
