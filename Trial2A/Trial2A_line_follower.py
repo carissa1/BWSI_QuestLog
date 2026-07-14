@@ -56,8 +56,8 @@ CROP_FLOOR = ((300, 0), (rc.camera.get_height(), rc.camera.get_width()))
 
 # TODO Part 1: Determine the HSV color threshold pairs for GREEN and RED
 # Colors, stored as a pair (hsv_min, hsv_max) Hint: Lab E!
-# BLUE = ((90, 100, 80), (140, 230, 240))  # The HSV range for the color blue
-BLUE = ((90, 100, 100), (120, 255, 255))
+BLUE = ((90, 100, 80), (140, 230, 240))  # The HSV range for the color blue
+# BLUE = ((90, 100, 100), (120, 255, 255))
 GREEN = ((30, 100, 100), (80, 255, 255))  # The HSV range for the color green
 RED = ((165, 50, 50), (10, 255, 255))  # The HSV range for the color red
 
@@ -75,7 +75,7 @@ error = 0
 
 with open("config.yaml", "r") as file:
     config = yaml.safe_load(file)
-    # BLUE = (tuple(config['Camera']['BLUE_lower']), tuple(config['Camera']['BLUE_upper']))
+    BLUE = (tuple(config['Camera']['BLUE_lower']), tuple(config['Camera']['BLUE_upper']))
     kp = config['PID']['kp']
     kd = config['PID']['kd']
     OFFSET = config['Camera']['OFFSET']
@@ -107,35 +107,37 @@ def update_contour(save = 'False'):
         hsv = cv.cvtColor(image, cv.COLOR_BGR2HSV)
         max_contour = []
         # contours_list = []
-        for color in COLOR_PRIORITY:
-            # contours = rc_utils.find_contours(image, BLUE[0], BLUE[1])
-            contours = rc_utils.find_contours(image, color[0], color[1])
-            # contours_list.extend(contours)
-            for contour in contours:
-                if cv.contourArea(contour) > MIN_CONTOUR_AREA:
-                    if len(max_contour) == 0:
-                        max_contour = contour
-                    elif cv.contourArea(contour) > cv.contourArea(max_contour):
-                        max_contour = contour
-            if len(max_contour) > 0:
-                break
+        # for color in COLOR_PRIORITY:
+        contours = rc_utils.find_contours(image, BLUE[0], BLUE[1])
+        # contours = rc_utils.find_contours(image, color[0], color[1])
+        # contours_list.extend(contours)
+        for contour in contours:
+            if cv.contourArea(contour) > MIN_CONTOUR_AREA:
+                if len(max_contour) == 0:
+                    max_contour = contour
+                elif cv.contourArea(contour) > cv.contourArea(max_contour):
+                    max_contour = contour
+            # if len(max_contour) > 0:
+            #     break
 
         # contours = rc_utils.find_contours(image, BLUE[0], BLUE[1])
         # contour = rc_utils.get_largest_contour(contours, MIN_CONTOUR_AREA)
 
         if len(max_contour) > 0:
             contour_center = rc_utils.get_contour_center(max_contour)
-            contour_center = (contour_center[0] + OFFSET, contour_center[1])
+            contour_center = (contour_center[0], contour_center[1] + OFFSET)
+            if contour_center[1] < 1:
+                contour_center = (contour_center[0], 0)
             contour_area = rc_utils.get_contour_area(max_contour)
 
             rc_utils.draw_contour(image, max_contour)
             rc_utils.draw_circle(image, contour_center)
 
         # Display the image to the screen
-        rc.display.show_color_image(image)
+        # rc.display.show_color_image(image)
 
         # if save:
-            # cv.imrite('photo_' + str(indx) + '.png', image)
+            # cv.imwrite('photo_' + str(indx) + '.png', image)
 
         indx += 1
 
@@ -204,11 +206,11 @@ def update():
         # kd = -0.0003
         # kp = -0.012
         # kd = -0.00015
-        kp = -0.008
-        kd = -0.00025
+        # kp = -0.008
+        # kd = -0.00025
         error = setpoint - present_value
         angle = kp * error + kd * (error - last_error)/rc.get_delta_time()
-        angle = rc_utils.clamp(angle, -1, 1)
+        angle = rc_utils.clamp(angle, -0.7, 0.7)
         last_error = error
 
         # kp2 = -0.03

@@ -1,8 +1,8 @@
 PID:
-  kp: -0.008
-  kd: -0.00025
+  kp: -0.003
+  kd: 0
 
 Camera:
-  BLUE_lower: [90, 100, 80]
-  BLUE_upper: [140, 230, 240]
-  OFFSET: 0
+  BLUE_lower: [90, 130, 130]
+  BLUE_upper: [120, 255, 255]
+  OFFSET: -20
