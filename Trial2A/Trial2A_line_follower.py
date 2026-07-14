@@ -30,6 +30,9 @@ using the following keys:
 import sys
 import cv2 as cv
 import numpy as np
+import csv
+
+import yaml
 
 # If this file is nested inside a folder in the labs folder, the relative path should
 # be [1, ../../library] instead.
@@ -68,8 +71,16 @@ contour_center = None  # The (pixel row, pixel column) of contour
 contour_area = 0  # The area of contour
 indx = 0
 last_error = 0
-OFFSET = 0
-# OFFSET = 35
+error = 0
+
+with open("config.yaml", "r") as file:
+    config = yaml.safe_load(file)
+    # BLUE = (tuple(config['Camera']['BLUE_lower']), tuple(config['Camera']['BLUE_upper']))
+    kp = config['PID']['kp']
+    kd = config['PID']['kd']
+    OFFSET = config['Camera']['OFFSET']
+
+# OFFSET = 0
 
 ########################################################################################
 # Functions
@@ -96,18 +107,18 @@ def update_contour(save = 'False'):
         hsv = cv.cvtColor(image, cv.COLOR_BGR2HSV)
         max_contour = []
         # contours_list = []
-        # for color in COLOR_PRIORITY:
-        contours = rc_utils.find_contours(image, BLUE[0], BLUE[1])
-        # contours = rc_utils.find_contours(image, color[0], color[1])
-        # contours_list.extend(contours)
-        for contour in contours:
-            if cv.contourArea(contour) > MIN_CONTOUR_AREA:
-                if len(max_contour) == 0:
-                    max_contour = contour
-                elif cv.contourArea(contour) > cv.contourArea(max_contour):
-                    max_contour = contour
-            # if len(max_contour) > 0:
-            #     break
+        for color in COLOR_PRIORITY:
+            # contours = rc_utils.find_contours(image, BLUE[0], BLUE[1])
+            contours = rc_utils.find_contours(image, color[0], color[1])
+            # contours_list.extend(contours)
+            for contour in contours:
+                if cv.contourArea(contour) > MIN_CONTOUR_AREA:
+                    if len(max_contour) == 0:
+                        max_contour = contour
+                    elif cv.contourArea(contour) > cv.contourArea(max_contour):
+                        max_contour = contour
+            if len(max_contour) > 0:
+                break
 
         # contours = rc_utils.find_contours(image, BLUE[0], BLUE[1])
         # contour = rc_utils.get_largest_contour(contours, MIN_CONTOUR_AREA)
@@ -143,15 +154,17 @@ def start():
     # Set update_slow to refresh every half second
     rc.set_update_slow_time(0.5)
 
+    data = ['Speed', 'Angle', 'Error']
+
+    with open('log.csv', mode='w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(data)
+
+    f.close()
+
     # Print start message
     print(
-        ">> Lab 2A - Color Image Line Following\n"
-        "\n"
-        "Controls:\n"
-        "   Right trigger = accelerate forward\n"
-        "   Left trigger = accelerate backward\n"
-        "   A button = print current speed and angle\n"
-        "   B button = print contour center and area"
+        ">> Trial 2A - line following\n"
     )
 
 # [FUNCTION] After start() is run, this function is run once every frame (ideally at
@@ -165,6 +178,9 @@ def update():
     global speed
     global angle
     global last_error
+    global error
+    global kp
+    global kd
     
     rc.drive.set_max_speed(0.8)
 
@@ -189,7 +205,7 @@ def update():
         # kp = -0.012
         # kd = -0.00015
         kp = -0.008
-        kd = -0.0004
+        kd = -0.00025
         error = setpoint - present_value
         angle = kp * error + kd * (error - last_error)/rc.get_delta_time()
         angle = rc_utils.clamp(angle, -1, 1)
@@ -205,14 +221,14 @@ def update():
             angle_factor = -0.8
         speed = 1 - angle_factor
         
-    if rc.controller.is_released(rc.controller.Button.A):
+    if rc.controller.was_pressed(rc.controller.Button.B):
         kp += 0.0005
-    if rc.controller.is_released(rc.controller.Button.A):
+    if rc.controller.was_pressed(rc.controller.Button.A):
         kp -= 0.0005
-    if rc.controller.is_released(rc.controller.Button.X):
-        kd += 0.00005
-    if rc.controller.is_released(rc.controller.Button.Y):
-        kd -= 0.00005
+    if rc.controller.was_pressed(rc.controller.Button.Y):
+        kd += 0.00002
+    if rc.controller.was_pressed(rc.controller.Button.X):
+        kd -= 0.00002
     
     # rc.drive.set_max_speed(0.2)
         # print(angle_factor)
@@ -225,8 +241,15 @@ def update():
 
     rc.drive.set_speed_angle(speed, angle)
 
-    print("SPEED: ", speed)
-    print("ANGLE: ", angle)
+    data = [speed, angle, error]
+
+    with open('log.csv', mode='a', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(data)
+
+    # print("SPEED: ", speed)
+    # print("ANGLE: ", angle)
+    # print("ERROR: ", error)
 
     # Print the center and area of the largest contour when B is held down
     # if rc.controller.is_down(rc.controller.Button.B):
@@ -244,22 +267,33 @@ def update_slow():
     than update().  By default, update_slow() is run once per second
     """
     # Print a line of ascii text denoting the contour area and x-position
-    if rc.camera.get_color_image() is None:
-        # If no image is found, print all X's and don't display an image
-        print("X" * 10 + " (No image) " + "X" * 10)
-    else:
-        # If an image is found but no contour is found, print all dashes
-        if contour_center is None:
-            print("-" * 32 + " : area = " + str(contour_area))
+    # if rc.camera.get_color_image() is None:
+    #     # If no image is found, print all X's and don't display an image
+    #     print("X" * 10 + " (No image) " + "X" * 10)
+    # else:
+    #     # If an image is found but no contour is found, print all dashes
+    #     if contour_center is None:
+    #         print("-" * 32 + " : area = " + str(contour_area))
 
-        # Otherwise, print a line of dashes with a | indicating the contour x-position
-        else:
-            s = ["-"] * 32
-            s[int(contour_center[1] / 20)] = "|"
-            print("".join(s) + " : area = " + str(contour_area))
+    #     # Otherwise, print a line of dashes with a | indicating the contour x-position
+    #     else:
+    #         s = ["-"] * 32
+    #         s[int(contour_center[1] / 20)] = "|"
+    #         print("".join(s) + " : area = " + str(contour_area))
 
-    update_contour(True)
+    # update_contour(True)
 
+    # print("SPEED: ", speed)
+    # print("ANGLE: ", angle)
+    # print("ERROR: ", error)
+
+    # data = [speed, angle, error]
+
+    # with open('log.csv', mode='a', newline='', encoding='utf-8') as f:
+    #     writer = csv.writer(f)
+    #     writer.writerow(data)
+
+    # f.close()
 
 ########################################################################################
 # DO NOT MODIFY: Register start and update and begin execution
