@@ -49,7 +49,7 @@ import racecar_utils as rc_utils
 rc = racecar_core.create_racecar()
 
 
-WINDOW_ANGLE = 6            # half-width (deg) averaged per reading -> smooths noise & small gaps
+WINDOW_ANGLE = 10            # half-width (deg) averaged per reading -> smooths noise & small gaps
 DELTA_ANGLE = 45            # deg between each side's "side ray" and its "front-diagonal ray"
 
 RIGHT_SIDE_ANGLE = 90
@@ -58,16 +58,16 @@ LEFT_SIDE_ANGLE = 270
 LEFT_FRONT_ANGLE = LEFT_SIDE_ANGLE + DELTA_ANGLE        # 315 deg
 
 FRONT_ANGLE = 0
-FRONT_WINDOW_ANGLE = 12
+FRONT_WINDOW_ANGLE = 30
 
 LOOKAHEAD = 250              # how far ahead we predict our distance from each wall
-TARGET_WALL_DIST = 150       # desired distance from a single wall when only one is visible
+TARGET_WALL_DIST = 120       # desired distance from a single wall when only one is visible
 MIN_VALID_DIST = 1          # readings at/below this count as "no wall there"
 
 MAX_SPEED = 1.0
 MIN_SPEED = 1.0
 SLOW_DOWN_DIST = 0      # start slowing down once front clearance drops below this
-CRITICAL_FRONT_DIST = 50    # below this, drop the PD math and force an emergency turn
+CRITICAL_FRONT_DIST = 80    # below this, drop the PD math and force an emergency turn
 
 KP, KD = 0.018, 0.00                # gains when following a single wall
 KP_CENTER, KD_CENTER = 0.018, 0.00   # gains when centering between two walls
