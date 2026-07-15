@@ -60,7 +60,7 @@ LEFT_FRONT_ANGLE = LEFT_SIDE_ANGLE + DELTA_ANGLE        # 315 deg
 FRONT_ANGLE = 0
 FRONT_WINDOW_ANGLE = 12
 
-LOOKAHEAD = 120              # how far ahead we predict our distance from each wall
+LOOKAHEAD = 250              # how far ahead we predict our distance from each wall
 TARGET_WALL_DIST = 150       # desired distance from a single wall when only one is visible
 MIN_VALID_DIST = 1          # readings at/below this count as "no wall there"
 
@@ -155,10 +155,10 @@ def update():
        
         right_room = right_dist if have_right else float("inf")
         left_room = left_dist if have_left else float("inf")
-        angle = 1.0 if right_room > left_room else -1.0
+        angle = 0.6 if right_room > left_room else -0.6
         speed = 1.0
     else:
-        angle = rc_utils.clamp(angle, -0.7, 0.7)
+        angle = rc_utils.clamp(angle, -0.6, 0.6)
         # Slow down approaching corners/dead-ends or while turning sharply; speed back
         # up in open, straight corridors.
         speed_for_clearance = rc_utils.remap_range(
