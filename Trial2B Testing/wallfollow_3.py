@@ -49,7 +49,7 @@ import racecar_utils as rc_utils
 rc = racecar_core.create_racecar()
 
 
-WINDOW_ANGLE = 10            # half-width (deg) averaged per reading -> smooths noise & small gaps
+WINDOW_ANGLE = 6            # half-width (deg) averaged per reading -> smooths noise & small gaps
 DELTA_ANGLE = 45            # deg between each side's "side ray" and its "front-diagonal ray"
 
 RIGHT_SIDE_ANGLE = 90
