@@ -160,6 +160,8 @@ def update():
 
     last_speed, last_angle = speed, angle
     rc.drive.set_speed_angle(speed, angle)
+     print(f"right={right_dist:.2f}  left={left_dist:.2f}")
+
 
 
 
