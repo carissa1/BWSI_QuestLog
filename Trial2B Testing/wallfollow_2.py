@@ -60,14 +60,14 @@ LEFT_FRONT_ANGLE = LEFT_SIDE_ANGLE + DELTA_ANGLE        # 315 deg
 FRONT_ANGLE = 0
 FRONT_WINDOW_ANGLE = 12
 
-LOOKAHEAD = 90              # how far ahead we predict our distance from each wall
-TARGET_WALL_DIST = 120       # desired distance from a single wall when only one is visible
+LOOKAHEAD = 120              # how far ahead we predict our distance from each wall
+TARGET_WALL_DIST = 150       # desired distance from a single wall when only one is visible
 MIN_VALID_DIST = 1          # readings at/below this count as "no wall there"
 
 MAX_SPEED = 1.0
 MIN_SPEED = 1.0
-SLOW_DOWN_DIST = 150        # start slowing down once front clearance drops below this
-CRITICAL_FRONT_DIST = 45    # below this, drop the PD math and force an emergency turn
+SLOW_DOWN_DIST = 0      # start slowing down once front clearance drops below this
+CRITICAL_FRONT_DIST = 80    # below this, drop the PD math and force an emergency turn
 
 KP, KD = 0.015, 0.003                # gains when following a single wall
 KP_CENTER, KD_CENTER = 0.015, 0.003   # gains when centering between two walls
@@ -156,7 +156,7 @@ def update():
         right_room = right_dist if have_right else float("inf")
         left_room = left_dist if have_left else float("inf")
         angle = 1.0 if right_room > left_room else -1.0
-        speed = -0.2
+        speed = 1.0
     else:
         angle = rc_utils.clamp(angle, -1, 1)
         # Slow down approaching corners/dead-ends or while turning sharply; speed back
