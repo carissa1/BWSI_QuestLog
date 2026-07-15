@@ -60,16 +60,13 @@ LEFT_FRONT_ANGLE = LEFT_SIDE_ANGLE + DELTA_ANGLE        # 315 deg
 FRONT_ANGLE = 0
 FRONT_WINDOW_ANGLE = 30
 
-LOOKAHEAD = 250              # how far ahead we predict our distance from each wall
-TARGET_WALL_DIST = 120       # desired distance from a single wall when only one is visible
+LOOKAHEAD = 150              # how far ahead we predict our distance from each wall   
 MIN_VALID_DIST = 1          # readings at/below this count as "no wall there"
 
 MAX_SPEED = 1.0
 MIN_SPEED = 1.0
 SLOW_DOWN_DIST = 0      # start slowing down once front clearance drops below this
-CRITICAL_FRONT_DIST = 80    # below this, drop the PD math and force an emergency turn
-
-KP, KD = 0.018, 0.00                # gains when following a single wall
+CRITICAL_FRONT_DIST = 80    # below this, drop the PD math and force an emergency turn        
 KP_CENTER, KD_CENTER = 0.018, 0.00   # gains when centering between two walls
 
 # ---- State carried between frames -------------------------------------------------------
@@ -133,12 +130,6 @@ def update():
 
         error = (right_pred - left_pred) / 2
         kp, kd = KP_CENTER, KD_CENTER
-    elif have_right:
-        error = right_pred - TARGET_WALL_DIST       # too far from right wall -> steer right (+)
-        kp, kd = KP, KD
-    elif have_left:
-        error = -(left_pred - TARGET_WALL_DIST)      # too far from left wall -> steer left (-)
-        kp, kd = KP, KD
     else:
         error = 0  # no walls in sight at all -- go straight until we pick one back up
         kp, kd = KP, KD
