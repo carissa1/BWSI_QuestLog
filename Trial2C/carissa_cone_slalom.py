@@ -152,43 +152,48 @@ def update():
     print("ANGLE: ", angle_dir)
     print("TURNING: ", turning)
     SPEED = 0.8
-    if abs(LIDAR_angle - 0) < 30 or abs(LIDAR_angle - 360) < 30: # straight towards cone
-        if abs(LIDAR_angle - 0) < 10 or abs(LIDAR_angle - 360) < 10: # straight towards cone
-            turning = 0
-            if LIDAR_dist > 80:
+    BACK_ANGLE_DIST = 85
+    BACK_DIST = 80
+    # CONE IN FRONT
+    if abs(LIDAR_angle - 0) < 30 or abs(LIDAR_angle - 360) < 30:        # relatively straight towards cone
+        if abs(LIDAR_angle - 0) < 10 or abs(LIDAR_angle - 360) < 10:    # extremely straight towards cone
+            turning = 0                                                     # reset turning bc recentered
+            if LIDAR_dist > BACK_DIST:                                      # far away --> approach cone   
                 speed = SPEED
                 angle = 0
-            else:
+            else:                                                           # close to cone --> go around cone
                 speed = SPEED
                 angle = angle_dir 
-        elif turning != 0:
+        elif turning != 0:                                              # already turning --> continue turning
             speed = SPEED
             angle = turning
-        else:
-            if LIDAR_dist > 80:
+        else:                                                           # not extremely straight
+            if LIDAR_dist > BACK_DIST:                                      # not extremely straight but far away --> keep straight
                 speed = SPEED
                 angle = 0
-            else:
+            else:                                                           # closer --> go around cone
                 speed = SPEED
                 angle = angle_dir
-    elif back_distance < 85 and back_angle > 220:
+    # CONE BEHIND
+    elif back_distance < BACK_ANGLE_DIST and back_angle > 220:          # cone behind and left --> turn left to recenter
         print("BEHIND LEFT")
         turning = -1
         speed = SPEED
         angle = turning
-    elif back_distance < 85 and back_angle < 160:
+    elif back_distance < BACK_ANGLE_DIST and back_angle < 160:          # cone behind and right --> turn right to recenter
         print("BEHIND RIGHT")
         turning = 1
         speed = SPEED
         angle = turning
-    elif turning != 0:
+    # CONTINUING TO TURN
+    elif turning != 0:                                                  # still turning, not recentered yet
         speed = SPEED
         angle = turning
-    else:
+    else:                                                               # otherwise just go straight but slow
         speed = 0.2
         angle = 0
     
-    if LIDAR_dist > 900:
+    if LIDAR_dist > 900:                                                # go straight but slow if walls too far or doesn't pick up any walls
         speed = 0.2
         angle = 0
     

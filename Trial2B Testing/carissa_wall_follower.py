@@ -144,9 +144,9 @@ def update():
         angle = 0
     else:
         if LIDAR_dist_left < LIDAR_dist_right:
-            angle = -1
+            angle = -0.7
         else:
-            angle = 1
+            angle = 0.7
     
     print("SPEED, ANGLE", speed, angle)
 

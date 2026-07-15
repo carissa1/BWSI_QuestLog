@@ -39,6 +39,7 @@ import yaml
 sys.path.insert(1, "../../library")
 import racecar_core
 import racecar_utils as rc_utils
+from PIL import Image
 
 ########################################################################################
 # Global variables
@@ -52,7 +53,7 @@ MIN_CONTOUR_AREA = 30
 
 # A crop window for the floor directly in front of the car
 # CROP_FLOOR = ((360, 0), (rc.camera.get_height(), rc.camera.get_width()))
-CROP_FLOOR = ((300, 0), (rc.camera.get_height(), rc.camera.get_width()))
+CROP_FLOOR = ((310, 0), (rc.camera.get_height() - 45, rc.camera.get_width()))
 
 # TODO Part 1: Determine the HSV color threshold pairs for GREEN and RED
 # Colors, stored as a pair (hsv_min, hsv_max) Hint: Lab E!
@@ -102,6 +103,8 @@ def update_contour(save = 'False'):
         # Crop the image to the floor directly in front of the car
         image = rc_utils.crop(image, CROP_FLOOR[0], CROP_FLOOR[1])
 
+        # print(image)
+
         # TODO Part 2: Search for line colors, and update the global variables
         # contour_center and contour_area with the largest contour found
         hsv = cv.cvtColor(image, cv.COLOR_BGR2HSV)
@@ -136,8 +139,8 @@ def update_contour(save = 'False'):
         # Display the image to the screen
         # rc.display.show_color_image(image)
 
-        # if save:
-            # cv.imwrite('photo_' + str(indx) + '.png', image)
+        if save:
+            cv.imwrite('photo_' + str(indx) + '.png', image)
 
         indx += 1
 
@@ -154,7 +157,7 @@ def start():
     rc.drive.set_speed_angle(speed, angle)
 
     # Set update_slow to refresh every half second
-    rc.set_update_slow_time(0.5)
+    rc.set_update_slow_time(0.25)
 
     data = ['Speed', 'Angle', 'Error']
 
@@ -184,10 +187,10 @@ def update():
     global kp
     global kd
     
-    rc.drive.set_max_speed(0.8)
+    rc.drive.set_max_speed(1)
 
     # Search for contours in the current color image
-    update_contour()
+    update_contour(False)
 
     # TODO Part 3: Determine the angle that the RACECAR should receive based on the current 
     # position of the center of line contour on the screen. Hint: The RACECAR should drive in
@@ -210,7 +213,7 @@ def update():
         # kd = -0.00025
         error = setpoint - present_value
         angle = kp * error + kd * (error - last_error)/rc.get_delta_time()
-        angle = rc_utils.clamp(angle, -0.7, 0.7)
+        angle = rc_utils.clamp(angle, -1, 1)
         last_error = error
 
         # kp2 = -0.03
@@ -222,7 +225,7 @@ def update():
         # elif angle_factor < -1:
         #     angle_factor = -0.8
         # speed = 1 - angle_factor
-        speed = 1
+    speed = 1
         
     if rc.controller.was_pressed(rc.controller.Button.B):
         kp += 0.0005
@@ -237,10 +240,10 @@ def update():
         # print(angle_factor)
 
     # Use the triggers to control the car's speed
-    rt = rc.controller.get_trigger(rc.controller.Trigger.RIGHT)
-    # lt = rc.controller.get_trigger(rc.controller.Trigger.LEFT)
-    if rt > 0.2:
-       speed = rt
+    # rt = rc.controller.get_trigger(rc.controller.Trigger.RIGHT)
+    # # lt = rc.controller.get_trigger(rc.controller.Trigger.LEFT)
+    # if rt > 0.2:
+    #    speed = rt
 
     rc.drive.set_speed_angle(speed, angle)
 
@@ -250,9 +253,9 @@ def update():
         writer = csv.writer(f)
         writer.writerow(data)
 
-    # print("SPEED: ", speed)
-    # print("ANGLE: ", angle)
-    # print("ERROR: ", error)
+    print("SPEED: ", speed)
+    print("ANGLE: ", angle)
+    print("ERROR: ", error)
 
     # Print the center and area of the largest contour when B is held down
     # if rc.controller.is_down(rc.controller.Button.B):
@@ -284,7 +287,7 @@ def update_slow():
     #         s[int(contour_center[1] / 20)] = "|"
     #         print("".join(s) + " : area = " + str(contour_area))
 
-    # update_contour(True)
+    update_contour(True)
 
     # print("SPEED: ", speed)
     # print("ANGLE: ", angle)
