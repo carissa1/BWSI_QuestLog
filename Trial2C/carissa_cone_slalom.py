@@ -51,6 +51,7 @@ queue = []
 first_turn = True
 turning = 0
 two_cones = False
+two_cones_time = 0
 
 STATES = {1: "APPROACH", 2: "REVERSE", 3: "RIGHT", 4: "LEFT", 5: "STOP", 6: "CONE_RIGHT", 7: "CONE_LEFT"}
 current_state = STATES[1]
@@ -90,48 +91,6 @@ def update_contour():
             return max_contour_center, cone_color
 
         return None, None
-
-def Cone_Right():
-    global queue
-    global first_turn
-    queue.append([1.3, 0.3, 1])
-    if first_turn:
-        queue.append([1, 0.4, 0])
-        first_turn = False
-    else:
-        queue.append([2, 0.4, 0])
-    queue.append([1.3, 0.3, -1])
-
-def Cone_Left():
-    global queue
-    global first_turn
-    queue.append([1.3, 0.3, -1])
-    if first_turn:
-        queue.append([1, 0.4, 0])
-        first_turn = False
-    else:
-        queue.append([2, 0.4, 0])
-    queue.append([1.3, 0.3, 1])
-
-# [FUNCTION] Appends the correct instructions to make a right turn to the queue
-def turnRight():
-    global queue
-    queue.append([0.1, 0.2, 1])
-
-# [FUNCTION] Appends the correct instructions to make a left turn to the queue
-def turnLeft():
-    global queue
-    queue.append([0.1, 0.2, -1])
-
-# [FUNCTION] Appends the correct instructions to go straight to the queue
-def goStraight(time, dir):
-    global queue
-    queue.append([time, 0.2*dir, 0])
-
-# [FUNCTION] Clears the queue to stop all actions
-def stopNow():
-    global queue
-    queue.clear()
 
 # [FUNCTION] The start function is run once every time the start button is pressed
 def start():
@@ -173,6 +132,7 @@ def update():
     global angle_dir
     global turning
     global two_cones
+    global two_cones_time
 
     # Search for contours in the current color image
     contour_center, cone_color = update_contour()
@@ -191,58 +151,39 @@ def update():
 
     print("ANGLE: ", angle_dir)
     print("TURNING: ", turning)
+    SPEED = 0.8
     if abs(LIDAR_angle - 0) < 30 or abs(LIDAR_angle - 360) < 30: # straight towards cone
         if abs(LIDAR_angle - 0) < 10 or abs(LIDAR_angle - 360) < 10: # straight towards cone
             turning = 0
             if LIDAR_dist > 80:
-                speed = 0.6
+                speed = SPEED
                 angle = 0
             else:
-                speed = 0.6
+                speed = SPEED
                 angle = angle_dir 
         elif turning != 0:
-            speed = 0.6
+            speed = SPEED
             angle = turning
         else:
             if LIDAR_dist > 80:
-                speed = 0.6
+                speed = SPEED
                 angle = 0
             else:
-                speed = 0.6
+                speed = SPEED
                 angle = angle_dir
     elif back_distance < 85 and back_angle > 220:
         print("BEHIND LEFT")
         turning = -1
-        speed = 0.6
+        speed = SPEED
         angle = turning
     elif back_distance < 85 and back_angle < 160:
         print("BEHIND RIGHT")
         turning = 1
-        speed = 0.6
+        speed = SPEED
         angle = turning
     elif turning != 0:
-        speed = 0.6
+        speed = SPEED
         angle = turning
-    elif (abs(LIDAR_angle - 360) > 30) and angle_dir == 1:
-        print("RED")
-        if back_distance < 85:
-            speed = 0.6
-            angle = -1
-            turning = -1
-            two_cones = False
-        else:
-            speed = 0.6
-            angle = 0
-    elif (LIDAR_angle - 0 > 30) and angle_dir == -1:
-        print("BLUE")
-        if back_distance < 85:
-            speed = 0.6
-            angle = 1
-            turning = 1
-            two_cones = False
-        else:
-            speed = 0.6
-            angle = 0
     else:
         speed = 0.2
         angle = 0
@@ -250,60 +191,8 @@ def update():
     if LIDAR_dist > 900:
         speed = 0.2
         angle = 0
-
-    filtered_scan = scan[(scan > 2) & (scan < 15)]
-    if len(filtered_scan) > 0:
-        print("TWO CONES - GO STRAIGHT BETWEEN")
-        speed = 1
-        angle = 0
-        two_cones = True
     
     print("SPEED, ANGLE", speed, angle)
-
-    # if len(queue) == 0:
-    #     DIST = 70
-    #     current_state = STATES[5]
-    #     # if contour_center[1] - 300 > 20:
-    #     #     current_state = STATES[3]
-    #     # if contour_center[1] - 300 < -20:
-    #     #     current_state = STATES[4]
-    #     if LIDAR_dist - DIST > 1:
-    #         current_state = STATES[1]
-    #     else:
-    #         if angle_dir == 1:
-    #             current_state = STATES[6]
-    #         elif angle_dir == -1:
-    #             current_state = STATES[7]
-    #     # print(LIDAR_dist)
-    #     # print(LIDAR_angle, contour_center)
-
-    #     print(current_state)
-    #     if current_state == "APPROACH":
-    #         goStraight(0.1, 1)
-    #     elif current_state == "REVERSE":
-    #         goStraight(0.1, -1)
-    #     # elif current_state == "RIGHT":
-    #     #     turnRight()
-    #     # elif current_state == "LEFT":
-    #     #     turnLeft()
-    #     elif current_state == "STOP":
-    #         stopNow()
-    #     elif current_state == "CONE_RIGHT":
-    #         Cone_Right()
-    #     elif current_state == "CONE_LEFT":
-    #         Cone_Left()
-
-    # queue
-    # if len(queue) > 0:
-    #     print(LIDAR_dist, queue[0])
-    #     speed = queue[0][1]
-    #     angle = queue[0][2]
-    #     queue[0][0] -= rc.get_delta_time()
-    #     if queue[0][0] <= 0:
-    #         queue.pop(0)
-    # else:
-    #     speed = 0
-    #     angle = 0
 
     # Set the speed and angle of the RACECAR after calculations have been complete
     rc.drive.set_speed_angle(speed, angle)
@@ -328,20 +217,20 @@ def update_slow():
     After start() is run, this function is run at a constant rate that is slower
     than update().  By default, update_slow() is run once per second
     """
-    # Print a line of ascii text denoting the contour area and x-position
-    if rc.camera.get_color_image() is None:
-        # If no image is found, print all X's and don't display an image
-        print("X" * 10 + " (No image) " + "X" * 10)
-    else:
-        # If an image is found but no contour is found, print all dashes
-        if contour_center is None:
-            print("-" * 32 + " : area = " + str(contour_area))
+    # # Print a line of ascii text denoting the contour area and x-position
+    # if rc.camera.get_color_image() is None:
+    #     # If no image is found, print all X's and don't display an image
+    #     print("X" * 10 + " (No image) " + "X" * 10)
+    # else:
+    #     # If an image is found but no contour is found, print all dashes
+    #     if contour_center is None:
+    #         print("-" * 32 + " : area = " + str(contour_area))
 
-        # Otherwise, print a line of dashes with a | indicating the contour x-position
-        else:
-            s = ["-"] * 32
-            s[int(contour_center[1] / 20)] = "|"
-            print("".join(s) + " : area = " + str(contour_area))
+    #     # Otherwise, print a line of dashes with a | indicating the contour x-position
+    #     else:
+    #         s = ["-"] * 32
+    #         s[int(contour_center[1] / 20)] = "|"
+    #         print("".join(s) + " : area = " + str(contour_area))
 
 
 ########################################################################################
