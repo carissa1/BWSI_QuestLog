@@ -37,10 +37,10 @@ rc = racecar_core.create_racecar()
 MIN_CONTOUR_AREA = 2000
 
 # TODO Part 1: Determine the HSV color threshold pairs for RED and BLUE
-RED_LOWER = ('Red', (0, 50, 50), (10, 255, 255))
+RED_LOWER = ('Red', (0, 50, 50), (20, 255, 255))
 RED_UPPER = ('Red', (170, 50, 50), (179, 255, 255))
-BLUE = ('Blue', (110, 50, 50), (130, 255, 255))
-COLOR_LST = [RED_LOWER, RED_UPPER, BLUE]
+GREEN = ('Green', (30, 100, 100), (80, 255, 255)) 
+COLOR_LST = [RED_LOWER, RED_UPPER, GREEN]
 
 # Variables
 speed = 0.0  # The current speed of the car
@@ -146,7 +146,7 @@ def update():
 
     if cone_color == 'Red':
         angle_dir = 1
-    elif cone_color == 'Blue':
+    elif cone_color == 'Green':
         angle_dir = -1
 
     print("ANGLE: ", angle_dir)

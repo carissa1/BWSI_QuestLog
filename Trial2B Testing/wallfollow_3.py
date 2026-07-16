@@ -38,7 +38,7 @@ import math
 
 # If this file is nested inside a folder in the labs folder, the relative path should
 # be [1, ../../library] instead.
-sys.path.insert(0, '../library')
+sys.path.insert(1, '../../library')
 import racecar_core
 import racecar_utils as rc_utils
 
@@ -49,8 +49,8 @@ import racecar_utils as rc_utils
 rc = racecar_core.create_racecar()
 
 
-WINDOW_ANGLE = 6            # half-width (deg) averaged per reading -> smooths noise & small gaps
-DELTA_ANGLE = 45            # deg between each side's "side ray" and its "front-diagonal ray"
+WINDOW_ANGLE = 15            # half-width (deg) averaged per reading -> smooths noise & small gaps
+DELTA_ANGLE = 50            # deg between each side's "side ray" and its "front-diagonal ray"
 
 RIGHT_SIDE_ANGLE = 90
 RIGHT_FRONT_ANGLE = RIGHT_SIDE_ANGLE - DELTA_ANGLE      # 45 deg
@@ -60,14 +60,16 @@ LEFT_FRONT_ANGLE = LEFT_SIDE_ANGLE + DELTA_ANGLE        # 315 deg
 FRONT_ANGLE = 0
 FRONT_WINDOW_ANGLE = 30
 
-LOOKAHEAD = 150              # how far ahead we predict our distance from each wall   
+LOOKAHEAD = 200              # how far ahead we predict our distance from each wall   
 MIN_VALID_DIST = 1          # readings at/below this count as "no wall there"
 
 MAX_SPEED = 1.0
 MIN_SPEED = 1.0
 SLOW_DOWN_DIST = 0      # start slowing down once front clearance drops below this
-CRITICAL_FRONT_DIST = 80    # below this, drop the PD math and force an emergency turn        
-KP_CENTER, KD_CENTER = 0.018, 0.00   # gains when centering between two walls
+CRITICAL_FRONT_DIST = 10    # below this, drop the PD math and force an emergency turn        
+KP_CENTER, KD_CENTER = 0.0035, 0.002   # gains when centering between two walls
+KP = 0.0035
+KD = 0
 
 # ---- State carried between frames -------------------------------------------------------
 prev_error = 0
@@ -149,7 +151,7 @@ def update():
         angle = 0.6 if right_room > left_room else -0.6
         speed = 1.0
     else:
-        angle = rc_utils.clamp(angle, -0.6, 0.6)
+        angle = rc_utils.clamp(angle, -1, 1)
         # Slow down approaching corners/dead-ends or while turning sharply; speed back
         # up in open, straight corridors.
         speed_for_clearance = rc_utils.remap_range(
@@ -160,6 +162,8 @@ def update():
 
     last_speed, last_angle = speed, angle
     rc.drive.set_speed_angle(speed, angle)
+    print(f"right={right_dist:.2f}  left={left_dist:.2f}")
+
 
 
 
