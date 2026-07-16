@@ -37,10 +37,10 @@ rc = racecar_core.create_racecar()
 MIN_CONTOUR_AREA = 2000
 
 # TODO Part 1: Determine the HSV color threshold pairs for RED and BLUE
-RED_LOWER = ('Red', (0, 50, 50), (20, 255, 255))
+RED_LOWER = ('Red', (0, 29, 29), (12, 255, 255)) # 50, 50), (5
 RED_UPPER = ('Red', (170, 50, 50), (179, 255, 255))
-GREEN = ('Green', (30, 100, 100), (80, 255, 255)) 
-COLOR_LST = [RED_LOWER, RED_UPPER, GREEN]
+GREEN = ('Green', (28, 100, 28), (90, 255, 255)) 
+COLOR_LST = [RED_LOWER, GREEN]
 
 # Variables
 speed = 0.0  # The current speed of the car
@@ -83,11 +83,13 @@ def update_contour():
                     if max_contour is None or area > cv.contourArea(max_contour):
                         max_contour = contour
                         cone_color = color[0]
+        # rc.display.show_color_image(image)
 
         if max_contour is not None:
             max_contour_center = rc_utils.get_contour_center(max_contour)
             cv.circle(image, (max_contour_center[1], max_contour_center[0]), 6, (0, 0, 0), -1)
-            rc.display.show_color_image(image)
+            rc_utils.draw_contour(image, max_contour)
+            # rc.display.show_color_image(image)
             return max_contour_center, cone_color
 
         return None, None
@@ -137,9 +139,11 @@ def update():
     # Search for contours in the current color image
     contour_center, cone_color = update_contour()
 
+    rc.drive.set_max_speed(1)
+
     # Get LIDAR
     scan = rc.lidar.get_samples()
-    LIDAR_angle, LIDAR_dist = rc_utils.get_lidar_closest_point(scan, (270, 90))
+    LIDAR_angle, LIDAR_dist = rc_utils.get_lidar_closest_point(scan, (270, 90)) # 270, 90
     back_angle, back_distance = rc_utils.get_lidar_closest_point(scan, (80, 290))
     print(LIDAR_angle, LIDAR_dist)
     print("BACK DIST: ", back_distance, back_angle)
@@ -151,14 +155,15 @@ def update():
 
     print("ANGLE: ", angle_dir)
     print("TURNING: ", turning)
-    SPEED = 0.8
+    SPEED = 1
     BACK_ANGLE_DIST = 85
-    BACK_DIST = 80
+    FRONT_DIST = 92
+    # cones are like 180 apart
     # CONE IN FRONT
     if abs(LIDAR_angle - 0) < 30 or abs(LIDAR_angle - 360) < 30:        # relatively straight towards cone
         if abs(LIDAR_angle - 0) < 10 or abs(LIDAR_angle - 360) < 10:    # extremely straight towards cone
             turning = 0                                                     # reset turning bc recentered
-            if LIDAR_dist > BACK_DIST:                                      # far away --> approach cone   
+            if LIDAR_dist > FRONT_DIST:                                      # far away --> approach cone   
                 speed = SPEED
                 angle = 0
             else:                                                           # close to cone --> go around cone
@@ -168,7 +173,7 @@ def update():
             speed = SPEED
             angle = turning
         else:                                                           # not extremely straight
-            if LIDAR_dist > BACK_DIST:                                      # not extremely straight but far away --> keep straight
+            if LIDAR_dist > FRONT_DIST:                                      # not extremely straight but far away --> keep straight
                 speed = SPEED
                 angle = 0
             else:                                                           # closer --> go around cone
@@ -177,12 +182,12 @@ def update():
     # CONE BEHIND
     elif back_distance < BACK_ANGLE_DIST and back_angle > 220:          # cone behind and left --> turn left to recenter
         print("BEHIND LEFT")
-        turning = -1
+        turning = -0.8
         speed = SPEED
         angle = turning
     elif back_distance < BACK_ANGLE_DIST and back_angle < 160:          # cone behind and right --> turn right to recenter
         print("BEHIND RIGHT")
-        turning = 1
+        turning = 0.8
         speed = SPEED
         angle = turning
     # CONTINUING TO TURN
@@ -190,14 +195,15 @@ def update():
         speed = SPEED
         angle = turning
     else:                                                               # otherwise just go straight but slow
-        speed = 0.2
+        speed = 1
         angle = 0
     
     if LIDAR_dist > 900:                                                # go straight but slow if walls too far or doesn't pick up any walls
-        speed = 0.2
+        speed = 1
         angle = 0
     
     print("SPEED, ANGLE", speed, angle)
+    print("COLOR: ", cone_color)
 
     # Set the speed and angle of the RACECAR after calculations have been complete
     rc.drive.set_speed_angle(speed, angle)

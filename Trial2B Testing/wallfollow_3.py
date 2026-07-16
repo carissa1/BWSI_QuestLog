@@ -50,7 +50,7 @@ rc = racecar_core.create_racecar()
 
 
 WINDOW_ANGLE = 15            # half-width (deg) averaged per reading -> smooths noise & small gaps
-DELTA_ANGLE = 50            # deg between each side's "side ray" and its "front-diagonal ray"
+DELTA_ANGLE = 45            # deg between each side's "side ray" and its "front-diagonal ray"
 
 RIGHT_SIDE_ANGLE = 90
 RIGHT_FRONT_ANGLE = RIGHT_SIDE_ANGLE - DELTA_ANGLE      # 45 deg
@@ -60,16 +60,16 @@ LEFT_FRONT_ANGLE = LEFT_SIDE_ANGLE + DELTA_ANGLE        # 315 deg
 FRONT_ANGLE = 0
 FRONT_WINDOW_ANGLE = 30
 
-LOOKAHEAD = 200              # how far ahead we predict our distance from each wall   
+LOOKAHEAD = 250              # how far ahead we predict our distance from each wall   
 MIN_VALID_DIST = 1          # readings at/below this count as "no wall there"
 
 MAX_SPEED = 1.0
-MIN_SPEED = 1.0
+MIN_SPEED = 1
 SLOW_DOWN_DIST = 0      # start slowing down once front clearance drops below this
-CRITICAL_FRONT_DIST = 10    # below this, drop the PD math and force an emergency turn        
-KP_CENTER, KD_CENTER = 0.0035, 0.002   # gains when centering between two walls
-KP = 0.0035
-KD = 0
+CRITICAL_FRONT_DIST = 20    # below this, drop the PD math and force an emergency turn        
+KP_CENTER, KD_CENTER = 0.0043, 0.003   # gains when centering between two walls
+KP = 0.0043
+KD = 0.00
 
 # ---- State carried between frames -------------------------------------------------------
 prev_error = 0
@@ -148,7 +148,7 @@ def update():
        
         right_room = right_dist if have_right else float("inf")
         left_room = left_dist if have_left else float("inf")
-        angle = 0.6 if right_room > left_room else -0.6
+        angle = 1 if right_room > left_room else -1
         speed = 1.0
     else:
         angle = rc_utils.clamp(angle, -1, 1)
@@ -160,15 +160,25 @@ def update():
         speed_for_turn = rc_utils.remap_range(abs(angle), 0, 1, MAX_SPEED, MIN_SPEED, True)
         speed = rc_utils.clamp(min(speed_for_clearance, speed_for_turn), MIN_SPEED, MAX_SPEED)
 
+    if right_dist is None:
+        angle = 0.6
+    elif left_dist is None:
+        angle = -0.6
+    elif right_dist - left_dist > 70:
+        angle = 0.6
+    
+
     last_speed, last_angle = speed, angle
     rc.drive.set_speed_angle(speed, angle)
-    print(f"right={right_dist:.2f}  left={left_dist:.2f}")
+    print("Speed: ", speed, " Angle:", angle)
+    print(f"right={right_dist}  left={left_dist} front={front_dist}")
+
 
 
 
 
 def update_slow():
-    print(f"speed={last_speed:.2f}  angle={last_angle:.2f}  err={prev_error:.1f}")
+    print(f"speed={last_speed}  angle={last_angle}  err={prev_error:.1f}")
 
 
 ########################################################################################
