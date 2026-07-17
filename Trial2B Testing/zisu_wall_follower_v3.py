@@ -60,15 +60,15 @@ LEFT_FRONT_ANGLE = LEFT_SIDE_ANGLE + DELTA_ANGLE        # 315 deg
 FRONT_ANGLE = 0
 FRONT_WINDOW_ANGLE = 30
 
-LOOKAHEAD = 250              # how far ahead we predict our distance from each wall   
+LOOKAHEAD = 200              # how far ahead we predict our distance from each wall   
 MIN_VALID_DIST = 1          # readings at/below this count as "no wall there"
 
 MAX_SPEED = 1.0
 MIN_SPEED = 1
 SLOW_DOWN_DIST = 0      # start slowing down once front clearance drops below this
-CRITICAL_FRONT_DIST = 20    # below this, drop the PD math and force an emergency turn        
-KP_CENTER, KD_CENTER = 0.0043, 0.003   # gains when centering between two walls
-KP = 0.0043
+CRITICAL_FRONT_DIST = 30    # below this, drop the PD math and force an emergency turn        
+KP_CENTER, KD_CENTER = 0.005, 0.005   # gains when centering between two walls
+KP = 0.005
 KD = 0.00
 
 # ---- State carried between frames -------------------------------------------------------
@@ -161,10 +161,10 @@ def update():
         speed = rc_utils.clamp(min(speed_for_clearance, speed_for_turn), MIN_SPEED, MAX_SPEED)
 
     if right_dist is None:
-        angle = 0.6
+        angle = 0.8
     elif left_dist is None:
-        angle = -0.6
-    elif right_dist - left_dist > 70:
+        angle = -0.8
+    elif right_dist - left_dist > 60:
         angle = 0.6
     
 

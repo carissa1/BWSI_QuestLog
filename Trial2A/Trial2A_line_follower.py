@@ -39,7 +39,6 @@ import yaml
 sys.path.insert(1, "../../library")
 import racecar_core
 import racecar_utils as rc_utils
-from PIL import Image
 
 ########################################################################################
 # Global variables
@@ -51,10 +50,9 @@ rc = racecar_core.create_racecar()
 # The smallest contour we will recognize as a valid contour
 MIN_CONTOUR_AREA = 30
 
-# A crop window for the floor directly in front of the car (480x640)
+# A crop window for the floor directly in front of the car
 # CROP_FLOOR = ((360, 0), (rc.camera.get_height(), rc.camera.get_width()))
-CROP_FLOOR = ((310, 0), (rc.camera.get_height() - 45, rc.camera.get_width()))
-CROP_MID = ((260, 0), (310, rc.camera.get_width()))
+CROP_FLOOR = ((300, 0), (rc.camera.get_height(), rc.camera.get_width()))
 
 # TODO Part 1: Determine the HSV color threshold pairs for GREEN and RED
 # Colors, stored as a pair (hsv_min, hsv_max) Hint: Lab E!
@@ -77,7 +75,7 @@ error = 0
 
 with open("config.yaml", "r") as file:
     config = yaml.safe_load(file)
-    BLUE = (tuple(config['Camera']['BLUE_lower']), tuple(config['Camera']['BLUE_upper']))
+    # BLUE = (tuple(config['Camera']['BLUE_lower']), tuple(config['Camera']['BLUE_upper']))
     kp = config['PID']['kp']
     kd = config['PID']['kd']
     OFFSET = config['Camera']['OFFSET']
@@ -91,85 +89,57 @@ with open("config.yaml", "r") as file:
 # [FUNCTION] Finds contours in the current color image and uses them to update 
 # contour_center and contour_area
 def update_contour(save = 'False'):
+    global contour_center
+    global contour_area
     global indx
 
     image = rc.camera.get_color_image()
-    image_lower = image.copy()
-    image_upper = image.copy()
 
-    if image_lower is None:
+    if image is None:
         contour_center = None
         contour_area = 0
     else:
         # Crop the image to the floor directly in front of the car
-        image_lower = rc_utils.crop(image_lower, CROP_FLOOR[0], CROP_FLOOR[1])
-        image_upper = rc_utils.crop(image_upper, CROP_MID[0], CROP_MID[1])
+        image = rc_utils.crop(image, CROP_FLOOR[0], CROP_FLOOR[1])
 
         # TODO Part 2: Search for line colors, and update the global variables
         # contour_center and contour_area with the largest contour found
-        max_contour_lower = []
-        max_contour_upper = []
+        hsv = cv.cvtColor(image, cv.COLOR_BGR2HSV)
+        max_contour = []
         # contours_list = []
         # for color in COLOR_PRIORITY:
-        contours_upper = rc_utils.find_contours(image_upper, BLUE[0], BLUE[1])
-        contours_lower = rc_utils.find_contours(image_lower, BLUE[0], BLUE[1])
-        # contours_upper = rc_utils.find_contours(image_upper, color[0], color[1])
-        # contours_lower = rc_utils.find_contours(image_lower, color[0], color[1])
+        # contours = rc_utils.find_contours(image, BLUE[0], BLUE[1])
+        contours = rc_utils.find_contours(image, color[0], color[1])
         # contours_list.extend(contours)
-        for contour in contours_lower:
+        for contour in contours:
             if cv.contourArea(contour) > MIN_CONTOUR_AREA:
-                if len(max_contour_lower) == 0:
-                    max_contour_lower = contour
-                elif cv.contourArea(contour) > cv.contourArea(max_contour_lower):
-                    max_contour_lower = contour
-            # if len(max_contour_lower) > 0:
-            #     break
-        for contour in contours_upper:
-            if cv.contourArea(contour) > MIN_CONTOUR_AREA:
-                if len(max_contour_upper) == 0:
-                    max_contour_upper = contour
-                elif cv.contourArea(contour) > cv.contourArea(max_contour_upper):
-                    max_contour_upper = contour
-            # if len(max_contour_upper) > 0:
+                if len(max_contour) == 0:
+                    max_contour = contour
+                elif cv.contourArea(contour) > cv.contourArea(max_contour):
+                    max_contour = contour
+            # if len(max_contour) > 0:
             #     break
 
-            # contours = rc_utils.find_contours(image, BLUE[0], BLUE[1])
-            # contour = rc_utils.get_largest_contour(contours, MIN_CONTOUR_AREA)
+        # contours = rc_utils.find_contours(image, BLUE[0], BLUE[1])
+        # contour = rc_utils.get_largest_contour(contours, MIN_CONTOUR_AREA)
 
-        contour_center_lower = None
-        if len(max_contour_lower) > 0:
-            contour_center_lower = rc_utils.get_contour_center(max_contour_lower)
-            contour_center_lower = (contour_center_lower[0] + CROP_MID[0][0], contour_center_lower[1] + OFFSET)
-            if contour_center_lower[1] < 1:
-                contour_center_lower = (contour_center_lower[0], 0)
-            contour_area = rc_utils.get_contour_area(max_contour_lower)
+        if len(max_contour) > 0:
+            contour_center = rc_utils.get_contour_center(max_contour)
+            contour_center = (contour_center[0], contour_center[1] + OFFSET)
+            if contour_center[1] < 1:
+                contour_center = (contour_center[0], 0)
+            contour_area = rc_utils.get_contour_area(max_contour)
 
-            rc_utils.draw_contour(image, max_contour_lower, color=(255, 0, 0))
-            rc_utils.draw_circle(image, contour_center_lower, color=(150, 0, 150))
-          
+            rc_utils.draw_contour(image, max_contour)
+            rc_utils.draw_circle(image, contour_center)
 
-        contour_center_upper = None
-        if len(max_contour_upper) > 0:
-            contour_center_upper = rc_utils.get_contour_center(max_contour_upper)
-            contour_center_upper = (contour_center_upper[0] + CROP_FLOOR[0][0], contour_center_upper[1] + OFFSET)
-            if contour_center_upper[1] < 1:
-                contour_center_upper = (contour_center_upper[0], 0)
-            contour_area = rc_utils.get_contour_area(max_contour_upper)
-
-            rc_utils.draw_contour(image, max_contour_upper, color=(0, 255, 0))
-            rc_utils.draw_circle(image, contour_center_upper, color=(150, 150, 0))
-
-        # Display the image_lower to the screen
+        # Display the image to the screen
         # rc.display.show_color_image(image)
 
-        if save:
-            # cv.imwrite('photo_upper_' + str(indx) + '.png', image_upper)
-            # cv.imwrite('photo_lower_' + str(indx) + '.png', image_lower)
-            cv.imwrite('photo_' + str(indx) + '.png', image_lower)
+        # if save:
+            # cv.imwrite('photo_' + str(indx) + '.png', image)
 
         indx += 1
-
-        return contour_center_lower, contour_center_upper
 
 # [FUNCTION] The start function is run once every time the start button is pressed
 def start():
@@ -214,10 +184,10 @@ def update():
     global kp
     global kd
     
-    rc.drive.set_max_speed(1)
+    rc.drive.set_max_speed(0.8)
 
     # Search for contours in the current color image
-    contour_center_lower, contour_center_upper = update_contour(False)
+    update_contour()
 
     # TODO Part 3: Determine the angle that the RACECAR should receive based on the current 
     # position of the center of line contour on the screen. Hint: The RACECAR should drive in
@@ -226,19 +196,32 @@ def update():
 
     # Choose an angle based on contour_center
     # If we could not find a contour, keep the previous angle
-    # print(contour_center_lower, contour_center_upper)
-    if contour_center_lower is not None and contour_center_upper is not None:
-        contour_center = (contour_center_lower[0] * 0.65 + contour_center_upper[0] * 0.35, contour_center_lower[1] * 0.6 + contour_center_upper[1] * 0.4)
+    if contour_center is not None:
         setpoint = rc.camera.get_width() // 2
         
         present_value = contour_center[1]
+        # kp = -0.003125
+        # -0.008
+        # kp = -0.003
+        # kd = -0.0003
+        # kp = -0.012
+        # kd = -0.00015
+        # kp = -0.008
+        # kd = -0.00025
         error = setpoint - present_value
         angle = kp * error + kd * (error - last_error)/rc.get_delta_time()
-        angle = rc_utils.clamp(angle, -1, 1)
+        angle = rc_utils.clamp(angle, -0.7, 0.7)
         last_error = error
-    else:
-        angle = 0
-    speed = 1
+
+        # kp2 = -0.03
+        # speed = kp2 * error
+        # speed = rc_utils.clamp(speed, -1, 1)
+        angle_factor = abs(angle)*1.75
+        if angle_factor > 1: 
+            angle_factor = 0.8
+        elif angle_factor < -1:
+            angle_factor = -0.8
+        speed = 1 - angle_factor
         
     if rc.controller.was_pressed(rc.controller.Button.B):
         kp += 0.0005
@@ -253,10 +236,10 @@ def update():
         # print(angle_factor)
 
     # Use the triggers to control the car's speed
-    # rt = rc.controller.get_trigger(rc.controller.Trigger.RIGHT)
-    # # lt = rc.controller.get_trigger(rc.controller.Trigger.LEFT)
-    # if rt > 0.2:
-    #    speed = rt
+    rt = rc.controller.get_trigger(rc.controller.Trigger.RIGHT)
+    # lt = rc.controller.get_trigger(rc.controller.Trigger.LEFT)
+    if rt > 0.2:
+       speed = rt
 
     rc.drive.set_speed_angle(speed, angle)
 
@@ -300,7 +283,7 @@ def update_slow():
     #         s[int(contour_center[1] / 20)] = "|"
     #         print("".join(s) + " : area = " + str(contour_area))
 
-    update_contour(True)
+    # update_contour(True)
 
     # print("SPEED: ", speed)
     # print("ANGLE: ", angle)
