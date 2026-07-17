@@ -61,15 +61,15 @@ LEFT_FRONT_ANGLE = LEFT_SIDE_ANGLE + DELTA_ANGLE        # 315 deg
 FRONT_ANGLE = 0
 FRONT_WINDOW_ANGLE = 30
 
-LOOKAHEAD = 250              # how far ahead we predict our distance from each wall   
+LOOKAHEAD = 120              # how far ahead we predict our distance from each wall   
 MIN_VALID_DIST = 1          # readings at/below this count as "no wall there"
 
 MAX_SPEED = 1.0
 MIN_SPEED = 0.9
 SLOW_DOWN_DIST = 0      # start slowing down once front clearance drops below this
 CRITICAL_FRONT_DIST = 20    # below this, drop the PD math and force an emergency turn        
-KP_CENTER, KD_CENTER = 0.0025, 0.00   # gains when centering between two walls
-KP = 0.0025
+KP_CENTER, KD_CENTER = 0.008, 0.015   # gains when centering between two walls
+KP = 0.008
 KD = 0.00
 
 # ---- State carried between frames -------------------------------------------------------
@@ -146,7 +146,9 @@ def update():
     angle = kp * error + kd * (error - prev_error)
     prev_error = error
 
-   
+
+    # if len(scan) == 0:
+    #     scan = []
     front_dist = rc_utils.get_lidar_average_distance(scan, FRONT_ANGLE, FRONT_WINDOW_ANGLE)
     if not is_valid(front_dist):
         front_dist = SLOW_DOWN_DIST * 2  # no reading -> assume the way ahead is clear
@@ -158,7 +160,7 @@ def update():
         angle = 1 if right_room > left_room else -1
         speed = 1.0
     else:
-        angle = rc_utils.clamp(angle, -1, 1)
+        angle = rc_utils.clamp(angle, -0.6, 0.6)
         # Slow down approaching corners/dead-ends or while turning sharply; speed back
         # up in open, straight corridors.
         speed_for_clearance = rc_utils.remap_range(
