@@ -66,7 +66,7 @@ MIN_VALID_DIST = 1          # readings at/below this count as "no wall there"
 
 MAX_SPEED = 1.0
 MIN_SPEED = 0.9
-SLOW_DOWN_DIST = 0      # start slowing down once front clearance drops below this
+SLOW_DOWN_DIST = 40      # start slowing down once front clearance drops below this
 CRITICAL_FRONT_DIST = 20    # below this, drop the PD math and force an emergency turn        
 KP_CENTER, KD_CENTER = 0.008, 0.015   # gains when centering between two walls
 KP = 0.008
