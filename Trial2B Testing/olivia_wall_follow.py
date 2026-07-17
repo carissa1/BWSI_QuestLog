@@ -67,29 +67,21 @@ def update_lidar():
     global left_distance, right_distance, for_left_distance, for_right_distance, forward_distance, leftside, rightside
     scan = rc.lidar.get_samples()
     forward_distance = scan[0]
-    left_distance = scan[630]
-    right_distance = scan[90]
-    for_left_distance = scan[610]
-    for_right_distance = scan[110]
+    left_distance = scan[945]
+    right_distance = scan[135]
 
-    leftside = scan[700]
-    rightside = scan[20]
 
-def remap_range(val: float, oldmin: float, old_max:float, new_min: float, new_max: float) -> float:
-    old_range = old_max - oldmin
-    new_range = new_max - new_min
-    return new_range *(float(val - oldmin) / float(old_range)) + new_min
+    leftside = scan[1040]
+    rightside = scan[40]
 
 
 # [FUNCTION] The start function is run once every time the start button is pressed
 def start():
     
-    
-    # rc.drive.set_max_speed(0.728)
 
     rc.drive.set_max_speed(1)
 
-    speed = 0.2
+    speed = 1
     angle = 0
     rc.drive.set_speed_angle(speed, angle)
 
@@ -102,79 +94,23 @@ def start():
 def update():
     global speed, angle, left_distance, right_distance, forward_distance, for_left_distance, for_right_distance, leftside, rightside
     update_lidar()
-
-    #find side with further wall and turn towards it
-    #remap angle to the distance error 
-    #the target distance from further wall should be the average of the two distances
-    error = left_distance - right_distance
-    # speed = remap_range(abs(error), 0, 10, 1, 0.3)
-    # speed = rc_utils.clamp(speed, 0.3, 1.0)
-    speed = 1
-
-    # if (for_right_distance == 0 or right_distance == 0) and leftside < 80:
-    #     print("forced right")
-    #     angle = 1
-    # elif (for_left_distance == 0 or left_distance == 0) and rightside < 80:
-    #     print("forced left")
-    #     angle = -1
-    # else:
-        # if right_distance- left_distance > 0:
-        #     #turn left
-        #     # setpoint = (left_distance + right_distance) / 2
-
-        #     error = left_distance - right_distance
-
-        #     # kp = -0.003125
-
-        #     # angle = kp * error
-        #     # angle = rc_utils.clamp(angle, -1, 0)
-        #     angle = remap_range(abs(error), 0, 40, 0, 1)
-        #     angle = rc_utils.clamp(angle, 0, 1)
-            
+    if (for_right_distance == 0 or right_distance == 0) and leftside < 80:
+        print("forced right")
+            angle = 1
+    elif (for_left_distance == 0 or left_distance == 0) and rightside < 80:
+        print("forced left")
+        angle = -1
+    else:
+        error = left_distance - right_distance
+    
+    
+        kp = -0.01435
+    
+        angle = kp * error
+        angle = rc_utils.clamp(angle, -1, 1)
         
 
-        #     speed = remap_range(abs(error**2), 0, 40, 1.0, 0.1)
-        #     speed = rc_utils.clamp(speed, 0.1, 1.0)
-        # elif left_distance - right_distance > 0:
-        #     # if for_right_distance < 30:
-        #     #     angle = -1
-        #     #     rc.drive.set_speed_angle(speed, angle)
-        #     #     pass
-        #     # else:
-        #     #turn right
-        #     setpoint = (left_distance + right_distance) / 2
-            
-        #     error = left_distance- right_distance
-
-        #     kp = -0.003125
-
-        #     # angle = kp * error
-        #     # angle = rc_utils.clamp(angle, 0, 1)
-        #     # print(f"{error=}, {angle=}")
-            
-        #     angle = remap_range(abs(error), 0, 35, 0, -1)
-        #     angle = rc_utils.clamp(angle, -1, 0)
-
-        #     speed = remap_range(abs(error**2), 0, 40, 1.0, 0.1)
-        #     speed = rc_utils.clamp(speed, 0.1, 1.0)
-    error = left_distance - right_distance
-
-
-    kp = -0.01435
-
-    angle = kp * error
-    angle = rc_utils.clamp(angle, -1, 1)
-    
-
-    # print(f"{angle=}")
-    # if abs(angle) < 0.5:
-    #     speed = remap_range(abs(forward_distance), 0, 400, 0.1, 1.0)
-    # else:
-    #     speed = remap_range(abs(angle), 0, 1, 0.8, 0.4)
-         
     rc.drive.set_speed_angle(speed, angle)
-
-
     
 
     # Remove 'pass' and write your source code for the update() function here
