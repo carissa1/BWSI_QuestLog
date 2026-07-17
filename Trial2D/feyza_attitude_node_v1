@@ -7,19 +7,19 @@ from sensor_msgs.msg import Imu, MagneticField
 from geometry_msgs.msg import Vector3Stamped
 
 
-class AttitudeNode(Node):
+class AttitudeNode(Node): #i created a ros2 node 
     def __init__(self):
-        super().__init__("attitude_node")
+        super().__init__("attitude_node") #initialize and name it
 
-        # Listen to the fused accelerometer and gyroscope readings.
-        self.create_subscription(
+        
+        self.create_subscription( #subscribe to fused imu so every time a message comes in ROS2 calls the imu callback func.
             Imu,
             "/imu/fused",
             self.imu_callback,
             qos_profile_sensor_data
         )
 
-        # Listen to the magnetometer for heading correction.
+        # listen to the magnetometer for heading corrections
         self.create_subscription(
             MagneticField,
             "/mag",
@@ -27,53 +27,53 @@ class AttitudeNode(Node):
             qos_profile_sensor_data
         )
 
-        # Publish roll, pitch, and yaw.
-        self.publisher = self.create_publisher(
+        
+        self.publisher = self.create_publisher( #publish on /attitude topic so the other nodes can use orientation estimate with role, pitch, and yaw
             Vector3Stamped,
             "/attitude",
             10
         )
 
-        self.roll = 0.0
+        self.roll = 0.0 #variables to store current orientation estimate
         self.pitch = 0.0
         self.yaw = 0.0
 
-        self.mag_x = 0.0
+        self.mag_x = 0.0 #store magnetometer readings
         self.mag_y = 0.0
 
-        self.previous_time = None
+        self.previous_time = None #store prev time bc gyroscope integration depends on time between measurements
 
-        # Higher alpha trusts the gyroscope more.
+        # higher alpha trusts the gyroscope more and uses the accelerometer for long term drift
         self.alpha = 0.98
 
-    def mag_callback(self, msg):
+    def mag_callback(self, msg): #save latest mag values
         self.mag_x = msg.magnetic_field.x
         self.mag_y = msg.magnetic_field.y
 
-    def imu_callback(self, msg):
+    def imu_callback(self, msg): #attitude estimation
         now = self.get_clock().now()
 
-        # The first message only establishes the starting time.
+        
         if self.previous_time is None:
             self.previous_time = now
             return
 
-        dt = (now - self.previous_time).nanoseconds / 1e9
+        dt = (now - self.previous_time).nanoseconds / 1e9  # calculate the elapsed time because integrating angular velocity needs you to multiply time between measurements
         self.previous_time = now
 
-        # Ignore unrealistic time gaps.
-        if dt <= 0.0 or dt > 0.2:
+        # ignore unrealistic time intervals
+        if dt <= 0.0 or dt > 0.2: 
             return
 
-        ax = msg.linear_acceleration.x
+        ax = msg.linear_acceleration.x #linear acceleration measures
         ay = msg.linear_acceleration.y
         az = msg.linear_acceleration.z
 
-        gx = msg.angular_velocity.x
+        gx = msg.angular_velocity.x #angular velocity from gyro
         gy = msg.angular_velocity.y
         gz = msg.angular_velocity.z
 
-        # Estimate roll and pitch using gravity.
+        # estimate roll and pitch using gravity from the accelerometer
         roll_from_accel = math.atan2(ay, az)
 
         pitch_from_accel = math.atan2(
@@ -81,16 +81,15 @@ class AttitudeNode(Node):
             math.sqrt(ay * ay + az * az)
         )
 
-        # Estimate yaw using the magnetometer.
+        # estimate yaw from magnometer
         yaw_from_mag = math.atan2(-self.mag_y, self.mag_x)
 
-        # Integrate gyroscope readings.
+        # integrate gyro readings to predict orientation changes
         roll_from_gyro = self.roll + gx * dt
         pitch_from_gyro = self.pitch + gy * dt
         yaw_from_gyro = self.yaw + gz * dt
 
-        # Complementary filter:
-        # gyro gives smooth motion, accel/mag correct long-term drift.
+        # gyro gives smooth motion, accel/mag correct long-term drift; 
         self.roll = (
             self.alpha * roll_from_gyro
             + (1.0 - self.alpha) * roll_from_accel
@@ -106,7 +105,7 @@ class AttitudeNode(Node):
             + (1.0 - self.alpha) * yaw_from_mag
         )
 
-        output = Vector3Stamped()
+        output = Vector3Stamped() #package to a ros2 message
         output.header.stamp = now.to_msg()
         output.header.frame_id = "imu_link"
 
@@ -114,7 +113,7 @@ class AttitudeNode(Node):
         output.vector.y = self.pitch
         output.vector.z = self.yaw
 
-        self.publisher.publish(output)
+        self.publisher.publish(output) #publish so other nodes can subscribe
 
 
 def main(args=None):
