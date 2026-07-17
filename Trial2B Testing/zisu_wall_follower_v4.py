@@ -67,8 +67,8 @@ MAX_SPEED = 1.0
 MIN_SPEED = 0.7
 SLOW_DOWN_DIST = 0      # start slowing down once front clearance drops below this
 CRITICAL_FRONT_DIST = 20    # below this, drop the PD math and force an emergency turn        
-KP_CENTER, KD_CENTER = 0.0043, 0.003   # gains when centering between two walls
-KP = 0.0043
+KP_CENTER, KD_CENTER = 0.015, 0.002   # gains when centering between two walls
+KP = 0.01
 KD = 0.00
 
 # ---- State carried between frames -------------------------------------------------------
