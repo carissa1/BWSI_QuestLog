@@ -1,0 +1,135 @@
+import math
+
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
+from sensor_msgs.msg import Imu, MagneticField
+from geometry_msgs.msg import Vector3Stamped
+
+
+class AttitudeNode(Node):
+    def __init__(self):
+        super().__init__("attitude_node")
+
+        # Listen to the fused accelerometer and gyroscope readings.
+        self.create_subscription(
+            Imu,
+            "/imu/fused",
+            self.imu_callback,
+            qos_profile_sensor_data
+        )
+
+        # Listen to the magnetometer for heading correction.
+        self.create_subscription(
+            MagneticField,
+            "/mag",
+            self.mag_callback,
+            qos_profile_sensor_data
+        )
+
+        # Publish roll, pitch, and yaw.
+        self.publisher = self.create_publisher(
+            Vector3Stamped,
+            "/attitude",
+            10
+        )
+
+        self.roll = 0.0
+        self.pitch = 0.0
+        self.yaw = 0.0
+
+        self.mag_x = 0.0
+        self.mag_y = 0.0
+
+        self.previous_time = None
+
+        # Higher alpha trusts the gyroscope more.
+        self.alpha = 0.98
+
+    def mag_callback(self, msg):
+        self.mag_x = msg.magnetic_field.x
+        self.mag_y = msg.magnetic_field.y
+
+    def imu_callback(self, msg):
+        now = self.get_clock().now()
+
+        # The first message only establishes the starting time.
+        if self.previous_time is None:
+            self.previous_time = now
+            return
+
+        dt = (now - self.previous_time).nanoseconds / 1e9
+        self.previous_time = now
+
+        # Ignore unrealistic time gaps.
+        if dt <= 0.0 or dt > 0.2:
+            return
+
+        ax = msg.linear_acceleration.x
+        ay = msg.linear_acceleration.y
+        az = msg.linear_acceleration.z
+
+        gx = msg.angular_velocity.x
+        gy = msg.angular_velocity.y
+        gz = msg.angular_velocity.z
+
+        # Estimate roll and pitch using gravity.
+        roll_from_accel = math.atan2(ay, az)
+
+        pitch_from_accel = math.atan2(
+            -ax,
+            math.sqrt(ay * ay + az * az)
+        )
+
+        # Estimate yaw using the magnetometer.
+        yaw_from_mag = math.atan2(-self.mag_y, self.mag_x)
+
+        # Integrate gyroscope readings.
+        roll_from_gyro = self.roll + gx * dt
+        pitch_from_gyro = self.pitch + gy * dt
+        yaw_from_gyro = self.yaw + gz * dt
+
+        # Complementary filter:
+        # gyro gives smooth motion, accel/mag correct long-term drift.
+        self.roll = (
+            self.alpha * roll_from_gyro
+            + (1.0 - self.alpha) * roll_from_accel
+        )
+
+        self.pitch = (
+            self.alpha * pitch_from_gyro
+            + (1.0 - self.alpha) * pitch_from_accel
+        )
+
+        self.yaw = (
+            self.alpha * yaw_from_gyro
+            + (1.0 - self.alpha) * yaw_from_mag
+        )
+
+        output = Vector3Stamped()
+        output.header.stamp = now.to_msg()
+        output.header.frame_id = "imu_link"
+
+        output.vector.x = self.roll
+        output.vector.y = self.pitch
+        output.vector.z = self.yaw
+
+        self.publisher.publish(output)
+
+
+def main(args=None):
+    rclpy.init(args=args)
+
+    node = AttitudeNode()
+
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
+
+
+if __name__ == "__main__":
+    main()
