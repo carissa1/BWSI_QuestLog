@@ -161,11 +161,11 @@ def update():
         speed = rc_utils.clamp(min(speed_for_clearance, speed_for_turn), MIN_SPEED, MAX_SPEED)
 
     if right_dist is None:
-        angle = 0.8
+        angle = 0.65
     elif left_dist is None:
-        angle = -0.8
+        angle = -0.65
     elif right_dist - left_dist > 60:
-        angle = 0.6
+        angle = 0.65
     
 
     last_speed, last_angle = speed, angle
