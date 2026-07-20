@@ -71,7 +71,7 @@ CRITICAL_FRONT_DIST = 50    # below this, drop the PD math and force an emergenc
 KP_CENTER, KD_CENTER = 0.005, 0.001   # gains when centering between two walls
 KP = 0.005
 KD = 0.00
-alpha = 0.3
+alpha = 0.7
 
 # ---- State carried between frames -------------------------------------------------------
 prev_error = 0
