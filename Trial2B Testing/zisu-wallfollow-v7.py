@@ -155,8 +155,8 @@ def update():
        
         right_room = right_dist if have_right else float("inf")
         left_room = left_dist if have_left else float("inf")
-        angle = 1 if right_room > left_room else -1
-        speed = 1.0
+        angle = 0.6 if right_room > left_room else -0.6
+        speed = 0.5
     else:
         angle = rc_utils.clamp(angle, -1, 1)
         # Slow down approaching corners/dead-ends or while turning sharply; speed back
