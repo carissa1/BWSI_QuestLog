@@ -1,7 +1,7 @@
 # BWSI_QuestLog_Testing
 testing and old codes for BWSI quest log
 
-to run the attention nodes paste these into the terminal
+to run the attitude node paste these into the terminal
 
 cd ~/ros2_ws
 colcon build --symlink-install --packages-select racecar_neo_ros2_driver
