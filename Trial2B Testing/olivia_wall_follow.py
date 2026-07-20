@@ -96,7 +96,7 @@ def update():
     update_lidar()
     if (for_right_distance == 0 or right_distance == 0) and leftside < 80:
         print("forced right")
-            angle = 1
+        angle = 1
     elif (for_left_distance == 0 or left_distance == 0) and rightside < 80:
         print("forced left")
         angle = -1

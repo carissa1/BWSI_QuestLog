@@ -52,7 +52,7 @@ MIN_CONTOUR_AREA = 80
 
 # A crop window for the floor directly in front of the car
 # CROP_FLOOR = ((360, 0), (rc.camera.get_height(), rc.camera.get_width()))
-CROP_FLOOR = ((310, 0), (rc.camera.get_height() - 45, rc.camera.get_width())) 
+CROP_FLOOR = ((310, 0), (rc.camera.get_height() - 45, rc.camera.get_width()))  # MAYBE REMOVE -45
 CROP_MID = ((260, 0), (310, rc.camera.get_width()))
 
 # TODO Part 1: Determine the HSV color threshold pairs for GREEN and RED
@@ -82,7 +82,7 @@ MAX_ANGLE_DELTA = 0.4
 
 with open("config.yaml", "r") as file:
     config = yaml.safe_load(file)
-    # BLUE = (tuple(config['Camera']['BLUE_lower']), tuple(config['Camera']['BLUE_upper']))
+    BLUE = (tuple(config['Camera']['BLUE_lower']), tuple(config['Camera']['BLUE_upper']))
     kp = config['PID']['kp']
     kd = config['PID']['kd']
     kp_far = config['PID']['kp_far']
@@ -225,7 +225,7 @@ def update():
     global last_angle
     global filtered_error
     
-    rc.drive.set_max_speed(0.8)
+    rc.drive.set_max_speed(1)
 
     # Search for contours in the current color image
     contour_center_lower, contour_center_upper = update_contour(False)
@@ -261,7 +261,7 @@ def update():
     last_error = filtered_error
     error = filtered_error
 
-    speed = 0.3
+    speed = 1
         
     if rc.controller.was_pressed(rc.controller.Button.B):
         kp += 0.0005

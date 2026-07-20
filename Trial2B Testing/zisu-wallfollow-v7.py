@@ -64,11 +64,11 @@ LOOKAHEAD = 150              # how far ahead we predict our distance from each w
 MIN_VALID_DIST = 1          # readings at/below this count as "no wall there"
 
 MAX_SPEED = 1.0
-MIN_SPEED = 0.9
+MIN_SPEED = 0.7
 SLOW_DOWN_DIST = 0      # start slowing down once front clearance drops below this
 CRITICAL_FRONT_DIST = 30    # below this, drop the PD math and force an emergency turn        
-KP_CENTER, KD_CENTER = 0.01, 0.005   # gains when centering between two walls
-KP = 0.01
+KP_CENTER, KD_CENTER = 0.005, 0.001   # gains when centering between two walls
+KP = 0.005
 KD = 0.00
 alpha = 0.3
 
