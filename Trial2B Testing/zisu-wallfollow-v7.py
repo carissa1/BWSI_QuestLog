@@ -65,7 +65,7 @@ LOOKAHEAD = 150              # how far ahead we predict our distance from each w
 MIN_VALID_DIST = 1          # readings at/below this count as "no wall there"
 
 MAX_SPEED = 1.0
-MIN_SPEED = 0.75
+MIN_SPEED = 0.6
 SLOW_DOWN_DIST = 30      # start slowing down once front clearance drops below this
 CRITICAL_FRONT_DIST = 50    # below this, drop the PD math and force an emergency turn        
 KP_CENTER, KD_CENTER = 0.005, 0.001   # gains when centering between two walls
@@ -156,7 +156,7 @@ def update():
         right_room = right_dist if have_right else float("inf")
         left_room = left_dist if have_left else float("inf")
         angle = 0.6 if right_room > left_room else -0.6
-        speed = 0.5
+        speed = 0.2
     else:
         angle = rc_utils.clamp(angle, -1, 1)
         # Slow down approaching corners/dead-ends or while turning sharply; speed back
