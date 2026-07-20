@@ -7,7 +7,7 @@ from sensor_msgs.msg import Imu, MagneticField
 from geometry_msgs.msg import Vector3Stamped
 
 
-class AttitudeNode(Node): #i created a ros2 node 
+class AttitudeNode(Node): 
     def __init__(self):
         super().__init__("attitude_node") #initialize and name it
 
@@ -105,15 +105,21 @@ class AttitudeNode(Node): #i created a ros2 node
             + (1.0 - self.alpha) * yaw_from_mag
         )
 
-        output = Vector3Stamped() #package to a ros2 message
-        output.header.stamp = now.to_msg()
-        output.header.frame_id = "imu_link"
+     output = Vector3Stamped()  # package into a ros2 message
+     output.header.stamp = now.to_msg()
+     output.header.frame_id = "imu_link"
 
-        output.vector.x = self.roll
-        output.vector.y = self.pitch
-        output.vector.z = self.yaw
+     # make the variables easier to read
+     roll = self.roll
+     pitch = self.pitch
+     yaw = self.yaw
 
-        self.publisher.publish(output) #publish so other nodes can subscribe
+     # Vector3Stamped uses x, y, z fields
+     output.vector.x = roll
+     output.vector.y = pitch
+     output.vector.z = yaw
+
+     self.publisher.publish(output)  # publish so other nodes can subscribe 
 
 
 def main(args=None):
