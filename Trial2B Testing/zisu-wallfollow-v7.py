@@ -35,6 +35,7 @@ running through the race in "race mode" to do the full course. Lowest time wins!
 
 import sys
 import math
+import csv
 
 # If this file is nested inside a folder in the labs folder, the relative path should
 # be [1, ../../library] instead.
@@ -64,9 +65,9 @@ LOOKAHEAD = 150              # how far ahead we predict our distance from each w
 MIN_VALID_DIST = 1          # readings at/below this count as "no wall there"
 
 MAX_SPEED = 1.0
-MIN_SPEED = 0.7
-SLOW_DOWN_DIST = 0      # start slowing down once front clearance drops below this
-CRITICAL_FRONT_DIST = 30    # below this, drop the PD math and force an emergency turn        
+MIN_SPEED = 0.8
+SLOW_DOWN_DIST = 30      # start slowing down once front clearance drops below this
+CRITICAL_FRONT_DIST = 50    # below this, drop the PD math and force an emergency turn        
 KP_CENTER, KD_CENTER = 0.005, 0.001   # gains when centering between two walls
 KP = 0.005
 KD = 0.00
@@ -89,6 +90,12 @@ def start():
     last_speed = 0
     last_angle = 0
     rc.drive.set_speed_angle(0, 0)
+    data = ['Speed', 'Angle', 'Error', 'lidar_left', 'lidar_right', 'lidar_front']
+
+    with open('log_wall.csv', mode='w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(data)
+
 
 
 def is_valid(dist):
@@ -160,12 +167,12 @@ def update():
         speed_for_turn = rc_utils.remap_range(abs(angle), 0, 1, MAX_SPEED, MIN_SPEED, True)
         speed = rc_utils.clamp(min(speed_for_clearance, speed_for_turn), MIN_SPEED, MAX_SPEED)
 
-    if right_dist is None:
-        angle = 0.65
-    elif left_dist is None:
-        angle = -0.65
-    elif right_dist - left_dist > 60:
-        angle = 0.65
+    # if right_dist is None:
+    #     angle = 0.65
+    # elif left_dist is None:
+    #     angle = -0.65
+    # elif right_dist - left_dist > 60:
+    #     angle = 0.65
     
     # rt = rc.controller.get_trigger(rc.controller.Trigger.RIGHT)
     # lt = rc.controller.get_trigger(rc.controller.Trigger.LEFT)
@@ -178,6 +185,13 @@ def update():
     rc.drive.set_speed_angle(speed, angle)
     print("Speed: ", speed, " Angle:", angle)
     print(f"right={right_dist}  left={left_dist} front={front_dist}")
+
+    data = [speed, angle, error, left_dist, right_dist, front_dist]
+
+    with open('log_wall.csv', mode='a', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(data)
+
 
 
 
