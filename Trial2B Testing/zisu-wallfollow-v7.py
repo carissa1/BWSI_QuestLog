@@ -67,7 +67,7 @@ MAX_SPEED = 1.0
 MIN_SPEED = 0.9
 SLOW_DOWN_DIST = 0      # start slowing down once front clearance drops below this
 CRITICAL_FRONT_DIST = 30    # below this, drop the PD math and force an emergency turn        
-KP_CENTER, KD_CENTER = 0.01, 0.00 5   # gains when centering between two walls
+KP_CENTER, KD_CENTER = 0.01, 0.005   # gains when centering between two walls
 KP = 0.01
 KD = 0.00
 alpha = 0.3
@@ -76,7 +76,7 @@ alpha = 0.3
 prev_error = 0
 last_speed = 0
 last_angle = 0
-
+filtered_error = 0
 
 ########################################################################################
 # Functions
@@ -116,7 +116,7 @@ def get_wall_reading(scan, side_angle, front_angle, theta_deg):
 # 60 frames per second or slower depending on processing speed) until the back button
 # is pressed
 def update():
-    global prev_error, last_speed, last_angle
+    global prev_error, last_speed, last_angle, filtered_error
 
     scan = rc.lidar.get_samples()
 
@@ -134,12 +134,11 @@ def update():
         filtered_error = alpha * error + (1-alpha) * filtered_error
         kp, kd = KP_CENTER, KD_CENTER
     else:
-        error = 0  # no walls in sight at all -- go straight until we pick one back up
+        filtered_error = 0  # no walls in sight at all -- go straight until we pick one back up
         kp, kd = KP, KD
 
     angle = kp * filtered_error + kd * (filtered_error - prev_error)
     prev_error = filtered_error
-
    
     front_dist = rc_utils.get_lidar_average_distance(scan, FRONT_ANGLE, FRONT_WINDOW_ANGLE)
     if not is_valid(front_dist):
@@ -168,6 +167,12 @@ def update():
     elif right_dist - left_dist > 60:
         angle = 0.65
     
+    # rt = rc.controller.get_trigger(rc.controller.Trigger.RIGHT)
+    # lt = rc.controller.get_trigger(rc.controller.Trigger.LEFT)
+    # if rt > 0.2:
+    #     angle = 0.6
+    # if lt > 0.2:
+    #     angle = -0.6
 
     last_speed, last_angle = speed, angle
     rc.drive.set_speed_angle(speed, angle)
