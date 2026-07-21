@@ -68,10 +68,10 @@ MAX_SPEED = 1.0
 MIN_SPEED = 0.6
 SLOW_DOWN_DIST = 30      # start slowing down once front clearance drops below this
 CRITICAL_FRONT_DIST = 50    # below this, drop the PD math and force an emergency turn        
-KP_CENTER, KD_CENTER = 0.005, 0.001   # gains when centering between two walls
-KP = 0.005
+KP_CENTER, KD_CENTER = 0.0025, 0.002   # gains when centering between two walls
+KP = 0.0025
 KD = 0.00
-alpha = 0.7
+alpha = 0.5
 
 # ---- State carried between frames -------------------------------------------------------
 prev_error = 0
@@ -137,7 +137,7 @@ def update():
 
     # ---- Pick a steering error based on which wall(s) are visible this frame ----
     if have_right and have_left:
-        error = (right_pred - left_pred) / 2
+        error = (right_pred - left_pred)+(right_dist - left_dist) / 2
         filtered_error = alpha * error + (1-alpha) * filtered_error
         kp, kd = KP_CENTER, KD_CENTER
     else:
@@ -186,7 +186,7 @@ def update():
     print("Speed: ", speed, " Angle:", angle)
     print(f"right={right_dist}  left={left_dist} front={front_dist}")
 
-    data = [speed, angle, error, left_dist, right_dist, front_dist]
+    data = [speed, angle, filtered_error, left_dist, right_dist, front_dist]
 
     with open('log_wall.csv', mode='a', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
