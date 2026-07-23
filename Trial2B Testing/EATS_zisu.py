@@ -18,7 +18,7 @@ WINDOW = 80
 RAY_WINDOW = 30
 KP = 0.01
 MIN_VALID_DIST = 1
-
+blindspot = 5
 right_max_dist = 0
 left_max_dist = 0
 angle = 0
@@ -48,8 +48,8 @@ def get_dist_angle (scan, window, window_start_deg):
 
 def update():
     scan = rc.lidar.get_samples()
-    right_window = get_angle_range(scan, 0, 0 + WINDOW)
-    left_window = get_angle_range(scan, 360 - WINDOW, 360)
+    right_window = get_angle_range(scan, blindspot, WINDOW)
+    left_window = get_angle_range(scan, 360  - WINDOW, 360 - blindspot)
     right_max_dist, right_angle = get_dist_angle(right_window, 0)
     left_max_dist, left_angle = get_dist_angle(left_window, 360 - WINDOW)
     left_wt = 360 - left_angle
