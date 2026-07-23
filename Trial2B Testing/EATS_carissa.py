@@ -49,13 +49,13 @@ import racecar_utils as rc_utils
 
 rc = racecar_core.create_racecar()
 
-SCAN_WINDOW = 30
-BLIND_WINDOW = 10
+SCAN_WINDOW = 70
+BLIND_WINDOW = 0
 CRITICAL_DIST = 0
-LOOK_AHEAD_DIST = 500
+LOOK_AHEAD_DIST = 300
 
-KP_WEIGHT = 0.006
-KP_ANGLE = 0.04
+KP_WEIGHT = 0.02
+KP_ANGLE = 0.003
 
 # ---- State carried between frames -------------------------------------------------------
 prev_error = 0
@@ -205,7 +205,7 @@ def update():
 
     # EATS Algorithm
     if front_dist > CRITICAL_DIST:
-        dist_diff = right_dist - left_dist
+        dist_diff = right_angle - left_angle
         delta_weight = abs(dist_diff * KP_WEIGHT)
         delta_weight = rc_utils.clamp(delta_weight, 0, 0.4)
 
@@ -221,10 +221,17 @@ def update():
         weight_L = rc_utils.clamp(weight_L, 0, 1)
         weight_R = rc_utils.clamp(weight_R, 0, 1)
 
-        print("WEIGHT: ", delta_weight, weight_R, weight_L)
+        print("   WEIGHT: ", delta_weight, weight_R, weight_L)
         # error = (right_angle * right_dist - (360 - left_angle) * left_dist)/ (left_dist + right_dist)
-        # error = right_dist * weight_R - left_dist * weight_L
-        error = right_angle * weight_R - (360 - left_angle)* weight_L
+        error = right_dist * weight_R - left_dist * weight_L
+        # error = right_angle * weight_R - (360 - left_angle)* weight_L
+        # c_angle = 360 - left_angle + right_angle
+        # c = math.sqrt(left_dist**2 + right_dist**2 - 2*right_dist*left_dist*math.cos(c_angle))
+        # error = c * (right_angle / c_angle) - c * ((360 - left_angle) / c_angle)
+        # print("   ", c_angle, c)
+        # print("   ", c * (right_angle / c_angle))
+        # print("   ", c * ((360 - left_angle) / c_angle))
+        # print("   ", error)
         angle = error * KP_ANGLE
 
     else:
@@ -267,8 +274,8 @@ def update():
     # )
     # speed_for_turn = rc_utils.remap_range(abs(angle), 0, 1, MAX_SPEED, MIN_SPEED, True)
     # speed = rc_utils.clamp(min(speed_for_clearance, speed_for_turn), MIN_SPEED, MAX_SPEED)
-    speed = rc_utils.remap_range(abs(angle), 0, 1, 0.8, 0.4, saturate=True)
-    # speed = 0.3
+    # speed = rc_utils.remap_range(abs(angle), 0, 1, 0.8, 0.4, saturate=True)
+    speed = 0.3
 
     # if right_dist is None:
     #     angle = 0.65
