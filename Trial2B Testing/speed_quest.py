@@ -49,34 +49,12 @@ import racecar_utils as rc_utils
 
 rc = racecar_core.create_racecar()
 
+SCAN_WINDOW = 50
+BLIND_WINDOW = 0
+CRITICAL_DIST = 0
 
-WINDOW_ANGLE = 30            # half-width (deg) averaged per reading -> smooths noise & small gaps
-DELTA_ANGLE = 60            # deg between each side's "side ray" and its "front-diagonal ray"
-
-RIGHT_SIDE_ANGLE = 90
-RIGHT_FRONT_ANGLE = RIGHT_SIDE_ANGLE - DELTA_ANGLE      # 45 deg
-LEFT_SIDE_ANGLE = 270
-LEFT_FRONT_ANGLE = LEFT_SIDE_ANGLE + DELTA_ANGLE        # 315 deg
-
-FRONT_ANGLE = 0
-FRONT_WINDOW_ANGLE = 30
-
-LOOKAHEAD = 150              # how far ahead we predict our distance from each wall   
-MIN_VALID_DIST = 1          # readings at/below this count as "no wall there"
-
-MAX_SPEED = 1.0
-MIN_SPEED = 0.6
-SLOW_DOWN_DIST = 30      # start slowing down once front clearance drops below this
-CRITICAL_FRONT_DIST = 50    # below this, drop the PD math and force an emergency turn        
-KP_CENTER, KD_CENTER = 0.0025, 0.002   # gains when centering between two walls
-KP = 0.0025
-KD = 0.00
-alpha = 0.5
-
-SCAN_WINDOW = 25
-
-KP_WEIGHT = 0.0
-KP_ANGLE = 0.008
+KP_WEIGHT = 0.0008
+KP_ANGLE = 0.006
 
 # ---- State carried between frames -------------------------------------------------------
 prev_error = 0
@@ -103,48 +81,80 @@ def start():
 
 
 
-def is_valid(dist):
+# def is_valid(dist):
     
-    return dist is not None and dist > MIN_VALID_DIST
+#     return dist is not None and dist > MIN_VALID_DIST
 
 
-def get_wall_reading(scan, side_angle, front_angle, theta_deg):
-    b = rc_utils.get_lidar_average_distance(scan, side_angle, WINDOW_ANGLE)
-    a = rc_utils.get_lidar_average_distance(scan, front_angle, WINDOW_ANGLE)
+# def get_wall_reading(scan, side_angle, front_angle, theta_deg):
+#     b = rc_utils.get_lidar_average_distance(scan, side_angle, WINDOW_ANGLE)
+#     a = rc_utils.get_lidar_average_distance(scan, front_angle, WINDOW_ANGLE)
 
-    if not is_valid(a) or not is_valid(b):
-        return None, None
+#     if not is_valid(a) or not is_valid(b):
+#         return None, None
 
-    theta = math.radians(theta_deg)
-    alpha = math.atan2(a * math.cos(theta) - b, a * math.sin(theta))
+#     theta = math.radians(theta_deg)
+#     alpha = math.atan2(a * math.cos(theta) - b, a * math.sin(theta))
 
-    current_dist = b * math.cos(alpha)
-    predicted_dist = current_dist + LOOKAHEAD * math.sin(alpha)
+#     current_dist = b * math.cos(alpha)
+#     predicted_dist = current_dist + LOOKAHEAD * math.sin(alpha)
 
-    return current_dist, predicted_dist
+#     return current_dist, predicted_dist
 
 def get_lidar_dist(scan):
     LEN_SCAN = 720 # 1080
-    max_right = 0
-    max_right_angle = 0
     # print(scan)
-    for i in range(0, len(scan)//3): # Right side 
+
+    # Find farthest point on right side
+    max_right = 0
+    max_right_indx = 0
+    max_right_angle = 0
+    for i in range(BLIND_WINDOW, LEN_SCAN//3): 
         if scan[i] < 9000 and scan[i] > max_right:
             max_right = scan[i]
+            max_right_indx = i
             max_right_angle = i * 360 / LEN_SCAN
-
-    avg_right_dist = rc_utils.get_lidar_average_distance(scan, max_right_angle, SCAN_WINDOW)
-
     
+    # Get average distance within a window
+    window_left = SCAN_WINDOW // 2
+    window_right = SCAN_WINDOW // 2
+    if max_right_indx + window_right > LEN_SCAN:
+        window_right = LEN_SCAN - max_right_indx
+        window_left += SCAN_WINDOW // 2 - (LEN_SCAN - max_right_indx)
+    elif max_right_indx - window_left < 0:
+        window_right += max_right_indx
+        window_left -= max_right_indx
+    avg_right_dist = 0
+    for i in range(max_right_indx - window_left, max_right_indx + window_right):
+        avg_right_dist += scan[i]
+    avg_right_dist /= window_left + window_right
+    # avg_right_dist = rc_utils.get_lidar_average_distance(scan, max_right_angle, SCAN_WINDOW)
 
+    # Find farthest point on left side
     max_left = 0
+    max_left_indx = 0
     max_left_angle = 0
-    for i in range(2*len(scan)//3, len(scan)): # Right side 
+    for i in range(2*LEN_SCAN//3, LEN_SCAN - BLIND_WINDOW): # Right side 
         if scan[i] < 9000 and scan[i] > max_left:
             max_left = scan[i]
+            max_left_indx = i
             max_left_angle = i * 360 / LEN_SCAN
     
-    avg_left_dist = rc_utils.get_lidar_average_distance(scan, max_left_angle, SCAN_WINDOW)
+    # Get average distance within a window
+    window_left = SCAN_WINDOW // 2
+    window_right = SCAN_WINDOW // 2
+    if max_left_indx + window_right > LEN_SCAN:
+        window_right = LEN_SCAN - max_left_indx
+        window_left += SCAN_WINDOW // 2 - (LEN_SCAN - max_left_indx)
+    if max_left_indx - window_left < 0:
+        window_right += max_left_indx
+        window_left -= max_left_indx
+    avg_left_dist = 0
+    for i in range(max_left_indx - window_left, max_left_indx + window_right):
+        avg_left_dist += scan[i]
+    avg_left_dist /= window_left + window_right
+
+    # avg_left_dist = rc_utils.get_lidar_average_distance(scan, max_left_angle, SCAN_WINDOW)
 
     print("   RIGHT: ", avg_right_dist, max_right_angle)
     print("   LEFT: ", avg_left_dist, max_left_angle)
@@ -166,32 +176,40 @@ def update():
 
     right_dist, right_angle, left_dist, left_angle = get_lidar_dist(scan)
 
-    # critical_angle, critical_dist = rc.lidar.get_lidar_closest_point(scan, (350, 10))
+    front_angle, front_dist = rc_utils.get_lidar_closest_point(scan, (330, 30))
+    print("   FRONT_DIST: ", front_dist, front_angle)
 
-    have_right = right_dist is not None
-    have_left = left_dist is not None
+    # have_right = right_dist is not None
+    # have_left = left_dist is not None
 
-    dist_diff = right_dist - left_dist
-    delta_weight = abs(dist_diff * KP_WEIGHT)
-    delta_weight = rc_utils.clamp(delta_weight, -0.4, 0.4)
+    # EATS Algorithm
+    if front_dist > CRITICAL_DIST:
+        dist_diff = right_dist - left_dist
+        delta_weight = abs(dist_diff * KP_WEIGHT)
+        delta_weight = rc_utils.clamp(delta_weight, 0, 0.4)
 
-    weight_R = 0.5
-    weight_L = 0.5
-    if right_dist < left_dist:
-        weight_R = weight_R - delta_weight
-        weight_L = weight_L + delta_weight
-    if right_dist > left_dist:
-        weight_R = weight_R + delta_weight
-        weight_L = weight_L - delta_weight
+        weight_R = 0.5
+        weight_L = 0.5
+        if right_dist < left_dist:
+            weight_R -= delta_weight
+            weight_L += delta_weight
+        elif right_dist > left_dist:
+            weight_R += delta_weight
+            weight_L -= delta_weight
+
+        weight_L = rc_utils.clamp(weight_L, 0, 1)
+        weight_R = rc_utils.clamp(weight_R, 0, 1)
+
+        print("WEIGHT: ", delta_weight, weight_R, weight_L)
+        error = right_dist * weight_R - left_dist * weight_L
+        angle = error * KP_ANGLE
+    else:
+        error = 10
+        if front_angle > 180: # turn right
+            angle = 0.2
+        else: # turn left
+            angle = -0.2
     
-    # weight_R = rc_utils.clamp(weight_R, -0.4, 0.4)
-    # weight_L = rc_utils.clamp(weight_L, -0.4, 0.4)
-
-    left_dist = weight_L * left_dist
-    right_dist = weight_R * right_dist
-    setpoint = 0
-    error = dist_diff - setpoint
-    angle = error * KP_ANGLE
 
     # ---- Pick a steering error based on which wall(s) are visible this frame ----
     # if have_right and have_left:
@@ -225,7 +243,7 @@ def update():
     # )
     # speed_for_turn = rc_utils.remap_range(abs(angle), 0, 1, MAX_SPEED, MIN_SPEED, True)
     # speed = rc_utils.clamp(min(speed_for_clearance, speed_for_turn), MIN_SPEED, MAX_SPEED)
-    speed = 0.1
+    speed = 0.25
 
     # if right_dist is None:
     #     angle = 0.65
@@ -246,16 +264,11 @@ def update():
     print("Speed: ", speed, " Angle:", angle)
     # print(f"right={right_dist}  left={left_dist} front={front_dist}")
 
-    data = [speed, angle, error, left_dist, right_dist, weight_L, weight_R]
+    data = [speed, angle, error, left_dist, right_dist]
 
     with open('log_wall.csv', mode='a', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow(data)
-
-
-
-
-
 
 def update_slow():
     # print(f"speed={last_speed}  angle={last_angle}  err={prev_error:.1f}")
