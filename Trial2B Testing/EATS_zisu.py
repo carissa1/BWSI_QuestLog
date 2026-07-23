@@ -18,7 +18,7 @@ WINDOW = 110
 RAY_WINDOW = 10
 KP = 0.01
 MIN_VALID_DIST = 1
-blindspot = 2
+blindspot = 5
 right_max_dist = 0
 left_max_dist = 0
 angle = 0
@@ -57,7 +57,9 @@ def update():
     target_angle = (right_angle * right_max_dist - left_wt * left_max_dist)/total_dist
     angle = target_angle * KP
     angle = rc_utils.clamp(angle, -1, 1)
-    speed = rc_utils.remap_range(abs(angle), 0, 1, 1, 0.4, saturate=True)
+    #speed = rc_utils.remap_range(abs(angle), 0, 1, 1, 0.4, saturate=True)
+    print("left dist:", left_max_dist)
+    print("right dist:", right_max_dist )
     rc.drive.set_speed_angle(speed, angle)
 
 
