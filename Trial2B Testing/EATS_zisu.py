@@ -16,7 +16,7 @@ rc = racecar_core.create_racecar()
 
 WINDOW = 80
 RAY_WINDOW = 20
-KP = 0.015
+KP = 0.01
 MIN_VALID_DIST = 1
 RANGE = 150
 right_max_dist = 0
@@ -76,7 +76,7 @@ def update():
     angle = rc_utils.clamp(angle, -1, 1)
     speed = rc_utils.remap_range(abs(angle), 0, 1, 1, 0.2, saturate=True)
     print(f"{right_angle=}, {left_angle=}, {right_max_dist=}, {left_max_dist=} {target_angle=}")
-    rc.drive.set_speed_angle(1, angle)
+    rc.drive.set_speed_angle(speed, angle)
 
 
 def update_slow():
