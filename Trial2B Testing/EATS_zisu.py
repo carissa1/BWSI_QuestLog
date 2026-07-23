@@ -14,8 +14,8 @@ import racecar_utils as rc_utils
 
 rc = racecar_core.create_racecar()
 
-WINDOW = 100
-RAY_WINDOW = 15
+WINDOW = 80
+RAY_WINDOW = 30
 KP = 0.01
 MIN_VALID_DIST = 1
 
@@ -39,10 +39,10 @@ def get_angle_range(scan, start_deg, end_deg):
     end_idx = int(end_deg * SAMPLES_PER_DEGREE)
     return scan[start_idx:end_idx]
 
-def get_dist_angle (window, window_start_deg):
+def get_dist_angle (scan, window, window_start_deg):
     idx = window.argmax()
-    max_dist = window[idx]
     angle_deg = window_start_deg + idx / SAMPLES_PER_DEGREE
+    max_dist = rc_utils.get_lidar_average_distance(scan, angle_deg, RAY_WINDOW)
     return max_dist, angle_deg
 
 
@@ -57,6 +57,7 @@ def update():
     target_angle = (right_angle * right_max_dist - left_wt * left_max_dist)/total_dist
     angle = target_angle * KP
     angle = rc_utils.clamp(angle, -1, 1)
+    speed = rc_utils.remap_range(abs(angle), 0, 1, 1, 0.4, saturate=True)
     rc.drive.set_speed_angle(speed, angle)
 
 
