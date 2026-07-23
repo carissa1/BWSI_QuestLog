@@ -49,12 +49,13 @@ import racecar_utils as rc_utils
 
 rc = racecar_core.create_racecar()
 
-SCAN_WINDOW = 50
-BLIND_WINDOW = 0
+SCAN_WINDOW = 30
+BLIND_WINDOW = 10
 CRITICAL_DIST = 0
+LOOK_AHEAD_DIST = 500
 
-KP_WEIGHT = 0.0008
-KP_ANGLE = 0.006
+KP_WEIGHT = 0.006
+KP_ANGLE = 0.04
 
 # ---- State carried between frames -------------------------------------------------------
 prev_error = 0
@@ -104,14 +105,19 @@ def start():
 def get_lidar_dist(scan):
     LEN_SCAN = 720 # 1080
     # print(scan)
+    new_scan = [200]*LEN_SCAN
 
     # Find farthest point on right side
     max_right = 0
     max_right_indx = 0
     max_right_angle = 0
-    for i in range(BLIND_WINDOW, LEN_SCAN//3): 
-        if scan[i] < 9000 and scan[i] > max_right:
+    for i in range(BLIND_WINDOW, LEN_SCAN//4):
+        if scan[i] > max_right:
             max_right = scan[i]
+            max_right_indx = i
+            max_right_angle = i * 360 / LEN_SCAN
+        if scan[i] < 1:
+            max_right = LOOK_AHEAD_DIST
             max_right_indx = i
             max_right_angle = i * 360 / LEN_SCAN
     
@@ -130,13 +136,21 @@ def get_lidar_dist(scan):
     avg_right_dist /= window_left + window_right
     # avg_right_dist = rc_utils.get_lidar_average_distance(scan, max_right_angle, SCAN_WINDOW)
 
+    # print(avg_right_dist)
+    if avg_right_dist > LOOK_AHEAD_DIST:
+        avg_right_dist = LOOK_AHEAD_DIST
+
     # Find farthest point on left side
     max_left = 0
     max_left_indx = 0
     max_left_angle = 0
-    for i in range(2*LEN_SCAN//3, LEN_SCAN - BLIND_WINDOW): # Right side 
-        if scan[i] < 9000 and scan[i] > max_left:
+    for i in range(3*LEN_SCAN//4, LEN_SCAN -  BLIND_WINDOW): # Right side 
+        if scan[i] > max_left:
             max_left = scan[i]
+            max_left_indx = i
+            max_left_angle = i * 360 / LEN_SCAN
+        if scan[i] < 1:
+            max_left = LOOK_AHEAD_DIST
             max_left_indx = i
             max_left_angle = i * 360 / LEN_SCAN
     
@@ -154,10 +168,17 @@ def get_lidar_dist(scan):
         avg_left_dist += scan[i]
     avg_left_dist /= window_left + window_right
 
+    # print(avg_left_dist)
+    if avg_left_dist > LOOK_AHEAD_DIST:
+        avg_left_dist = LOOK_AHEAD_DIST
+
     # avg_left_dist = rc_utils.get_lidar_average_distance(scan, max_left_angle, SCAN_WINDOW)
 
     print("   RIGHT: ", avg_right_dist, max_right_angle)
     print("   LEFT: ", avg_left_dist, max_left_angle)
+    print("   WINDOW: ", window_left, window_right)
+    f = open('scan.txt', 'w')
+    f.write(str(scan))
 
     return avg_right_dist, max_right_angle, avg_left_dist, max_left_angle
 
@@ -201,8 +222,11 @@ def update():
         weight_R = rc_utils.clamp(weight_R, 0, 1)
 
         print("WEIGHT: ", delta_weight, weight_R, weight_L)
-        error = right_dist * weight_R - left_dist * weight_L
+        # error = (right_angle * right_dist - (360 - left_angle) * left_dist)/ (left_dist + right_dist)
+        # error = right_dist * weight_R - left_dist * weight_L
+        error = right_angle * weight_R - (360 - left_angle)* weight_L
         angle = error * KP_ANGLE
+
     else:
         error = 10
         if front_angle > 180: # turn right
@@ -243,7 +267,8 @@ def update():
     # )
     # speed_for_turn = rc_utils.remap_range(abs(angle), 0, 1, MAX_SPEED, MIN_SPEED, True)
     # speed = rc_utils.clamp(min(speed_for_clearance, speed_for_turn), MIN_SPEED, MAX_SPEED)
-    speed = 0.25
+    # speed = rc_utils.remap_range(abs(angle), 0, 1, 0.8, 0.4, saturate=True)
+    speed = 0.3
 
     # if right_dist is None:
     #     angle = 0.65
