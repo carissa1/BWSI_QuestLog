@@ -50,8 +50,8 @@ def update():
     scan = rc.lidar.get_samples()
     right_window = get_angle_range(scan, blindspot, WINDOW)
     left_window = get_angle_range(scan, 360  - WINDOW, 360 - blindspot)
-    right_max_dist, right_angle = get_dist_angle(right_window, 0)
-    left_max_dist, left_angle = get_dist_angle(left_window, 360 - WINDOW)
+    right_max_dist, right_angle = get_dist_angle(scan, right_window, 0)
+    left_max_dist, left_angle = get_dist_angle(scan, left_window, 360 - WINDOW)
     left_wt = 360 - left_angle
     total_dist = right_max_dist + left_max_dist
     target_angle = (right_angle * right_max_dist - left_wt * left_max_dist)/total_dist
@@ -61,6 +61,10 @@ def update():
     print("left dist:", left_max_dist)
     print("right dist:", right_max_dist )
     rc.drive.set_speed_angle(speed, angle)
+
+if __name__ == "__main__":
+    rc.set_start_update(start, update, update_slow)
+    rc.go()
 
 
 
