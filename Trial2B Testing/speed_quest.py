@@ -267,8 +267,8 @@ def update():
     # )
     # speed_for_turn = rc_utils.remap_range(abs(angle), 0, 1, MAX_SPEED, MIN_SPEED, True)
     # speed = rc_utils.clamp(min(speed_for_clearance, speed_for_turn), MIN_SPEED, MAX_SPEED)
-    # speed = rc_utils.remap_range(abs(angle), 0, 1, 0.8, 0.4, saturate=True)
-    speed = 0.3
+    speed = rc_utils.remap_range(abs(angle), 0, 1, 0.8, 0.4, saturate=True)
+    # speed = 0.3
 
     # if right_dist is None:
     #     angle = 0.65
