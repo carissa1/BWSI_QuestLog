@@ -14,11 +14,11 @@ import racecar_utils as rc_utils
 
 rc = racecar_core.create_racecar()
 
-WINDOW = 80
-RAY_WINDOW = 30
+WINDOW = 110
+RAY_WINDOW = 10
 KP = 0.01
 MIN_VALID_DIST = 1
-blindspot = 5
+blindspot = 2
 right_max_dist = 0
 left_max_dist = 0
 angle = 0
