@@ -57,6 +57,7 @@ def get_dist_angle (scan, window, window_start_deg):
 
 def update():
     global WINDOW
+    ROBOT_HALF_WIDTH = 10
     scan = rc.lidar.get_samples()
     right_window = get_angle_range(scan, 0, WINDOW)
     left_window = get_angle_range(scan, 360 - WINDOW, 360)
@@ -64,7 +65,12 @@ def update():
     left_max_dist, left_angle = get_dist_angle(scan, left_window, 360 - WINDOW)
     left_wt = (360 - left_angle) + 90
     right_wt = right_angle + 90
-    total_dist = right_max_dist + left_max_dist
+    
+    left_dist = left_max_dist - ROBOT_HALF_WIDTH / math.cos(360-left_angle)
+    right_dist = right_max_dist - ROBOT_HALF_WIDTH / math.cos(360-right_angle)
+    
+    total_dist = right_dist + left_dist
+    target_angle = (right_wt * right_dist - left_wt * left_dist)/total_dist
     target_angle = (right_wt * right_max_dist - left_wt * left_max_dist)/total_dist
     angle = target_angle * KP
     angle = rc_utils.clamp(angle, -1, 1)
