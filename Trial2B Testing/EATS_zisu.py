@@ -43,6 +43,8 @@ def get_dist_angle (scan, window, window_start_deg):
     idx = window.argmax()
     angle_deg = window_start_deg + idx / SAMPLES_PER_DEGREE
     max_dist = rc_utils.get_lidar_average_distance(scan, angle_deg, RAY_WINDOW)
+    if max_dist > 500:
+        max_dist = 500
     return max_dist, angle_deg
 
 
