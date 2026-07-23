@@ -14,12 +14,12 @@ import racecar_utils as rc_utils
 
 rc = racecar_core.create_racecar()
 
-WINDOW = 90
-RAY_WINDOW = 10
-KP = 0.015
+WINDOW = 60
+RAY_WINDOW = 20
+KP = 0.035
 MIN_VALID_DIST = 1
 RANGE = 400
-blindspot = 5
+blindspot = 0
 right_max_dist = 0
 left_max_dist = 0
 angle = 0
@@ -28,10 +28,10 @@ speed = 1
 def start ():
     rc.drive.set_speed_angle(0, 0)
     data = ['Speed', 'Angle', 'Error', 'lidar_left', 'lidar_right']
-    
     with open('log_wall.csv', mode='w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow(data)
+    
 
 def is_valid(dist):
     
@@ -45,12 +45,14 @@ def get_angle_range(scan, start_deg, end_deg):
     return scan[start_idx:end_idx]
 
 def get_dist_angle (scan, window, window_start_deg):
-    idx = window.argmax()
-    angle_deg = window_start_deg + idx / SAMPLES_PER_DEGREE
-    max_dist = rc_utils.get_lidar_average_distance(scan, angle_deg, RAY_WINDOW)
-    if max_dist > RANGE:
-        max_dist = RANGE
-    return max_dist, angle_deg
+    if len(window) != 0:
+        idx = window.argmax()
+        angle_deg = window_start_deg + idx / SAMPLES_PER_DEGREE
+        max_dist = rc_utils.get_lidar_average_distance(scan, angle_deg, RAY_WINDOW)
+        if max_dist > RANGE:
+            max_dist = RANGE
+        return max_dist, angle_deg
+    
 
 
 def update():
@@ -66,7 +68,7 @@ def update():
     angle = target_angle * KP
     angle = rc_utils.clamp(angle, -1, 1)
     speed = rc_utils.remap_range(abs(angle), 0, 1, 1, 0.4, saturate=True)
-    print(f"{right_angle=}, {left_angle=}")
+    print(f"{right_angle=}, {left_angle=}, {right_max_dist=}, {left_max_dist=}")
     rc.drive.set_speed_angle(speed, angle)
 
 
