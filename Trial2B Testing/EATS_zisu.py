@@ -57,7 +57,7 @@ def update():
     global WINDOW
     scan = rc.lidar.get_samples()
     right_window = get_angle_range(scan, blindspot, WINDOW)
-    left_window = get_angle_range(scan, WINDOW, 360  - WINDOW)
+    left_window = get_angle_range(scan, 360 - WINDOW, 360  - blindspot)
     right_max_dist, right_angle = get_dist_angle(scan, right_window, 0)
     left_max_dist, left_angle = get_dist_angle(scan, left_window, 360 - WINDOW)
     left_wt = 360 - left_angle
