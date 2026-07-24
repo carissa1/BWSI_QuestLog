@@ -40,6 +40,7 @@ rc = racecar_core.create_racecar()
 
 MIN_CONTOUR_AREA = 1000
 RED = ((175, 172, 109), (179, 209, 255))  # The HSV range for the color red
+GREEN = ((28, 100, 28), (90, 255, 255)) 
 
 BLUE = ((110, 187, 162), (113, 233, 255))
 CROP_FLOOR = ((50, 0), (rc.camera.get_height(), rc.camera.get_width()))
@@ -81,7 +82,7 @@ def update_contour():
         red_contours = rc_utils.find_contours(image, RED[0], RED[1])
         red_contour = rc_utils.get_largest_contour(red_contours, MIN_CONTOUR_AREA)
 
-        blue_contours = rc_utils.find_contours(image, BLUE[0], BLUE[1])
+        blue_contours = rc_utils.find_contours(image, GREEN[0], GREEN[1])
         blue_contour = rc_utils.get_largest_contour(blue_contours, MIN_CONTOUR_AREA)
         contour = None
 
@@ -98,7 +99,7 @@ def update_contour():
             contour_color = "RED"
         else:
             contour = blue_contour 
-            contour_color = "BLUE"
+            contour_color = "GREEN"
         
         if contour is not None:
             contour_center = rc_utils.get_contour_center(contour)
@@ -156,9 +157,9 @@ def update():
             if contour_color == "RED" and distance<100 and distance != 0:
                 present_value += 250
                 last_color = "RED"
-            elif contour_color == "BLUE" and distance <100 and distance != 0:
+            elif contour_color == "GREEN" and distance <100 and distance != 0:
                 present_value -= 250
-                last_color = "BLUE"
+                last_color = "GREEN"
             
             kp = -0.006
             error = setpoint - present_value
@@ -173,7 +174,7 @@ def update():
 
     elif current_state == "TURN":
         if len(queue) == 0:
-            if last_color == "BLUE" and last_angle >-0.3:
+            if last_color == "GREEN" and last_angle >-0.3:
                 angle = -0.3
             elif last_color == "RED" and last_angle <0.3:
                 angle = 0.3
@@ -182,7 +183,7 @@ def update():
             queue.append([0.9, 1, angle])
     elif current_state == "SEARCH":
         speed = 0.4
-        if last_color == "BLUE":
+        if last_color == "GREEN":
             angle = 1
         else:
             angle = -1
