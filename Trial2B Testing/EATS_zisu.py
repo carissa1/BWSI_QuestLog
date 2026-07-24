@@ -14,6 +14,9 @@ RAY_WINDOW = 20
 KP = 0.01
 MIN_VALID_DIST = 1
 RANGE = 200
+right_max_dist = 0
+left_max_dist = 0
+angle = 0
 speed = 1
 ROBOT_HALF_WIDTH = 10
 SAMPLES_PER_DEGREE = 1080 / 360
@@ -53,7 +56,6 @@ def update():
     right_dist = right_max_dist - ROBOT_HALF_WIDTH / math.cos(360-right_angle)
     total_dist = right_dist + left_dist
     target_angle = (right_wt * right_dist - left_wt * left_dist)/total_dist
-    target_angle = (right_wt * right_max_dist - left_wt * left_max_dist)/total_dist
     angle = target_angle * KP
     angle = rc_utils.clamp(angle, -1, 1)
     speed = rc_utils.remap_range(abs(angle), 0, 1, 1, 0.25, saturate=True)
