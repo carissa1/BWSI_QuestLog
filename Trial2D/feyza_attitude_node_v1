@@ -105,21 +105,15 @@ class AttitudeNode(Node):
             + (1.0 - self.alpha) * yaw_from_mag
         )
 
-     output = Vector3Stamped()  # package into a ros2 message
-     output.header.stamp = now.to_msg()
-     output.header.frame_id = "imu_link"
+        output = Vector3Stamped() #package to a ros2 message
+        output.header.stamp = now.to_msg()
+        output.header.frame_id = "imu_link"
 
-     # make the variables easier to read
-     roll = self.roll
-     pitch = self.pitch
-     yaw = self.yaw
+        output.vector.x = self.roll
+        output.vector.y = self.pitch
+        output.vector.z = self.yaw
 
-     # Vector3Stamped uses x, y, z fields
-     output.vector.x = roll
-     output.vector.y = pitch
-     output.vector.z = yaw
-
-     self.publisher.publish(output)  # publish so other nodes can subscribe 
+        self.publisher.publish(output) #publish so other nodes can subscribe
 
 
 def main(args=None):
