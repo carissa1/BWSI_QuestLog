@@ -18,7 +18,7 @@ WINDOW = 100
 RAY_WINDOW = 20
 KP = 0.01
 MIN_VALID_DIST = 1
-RANGE = 200
+RANGE = 125
 right_max_dist = 0
 left_max_dist = 0
 angle = 0
@@ -53,8 +53,6 @@ def get_dist_angle (scan, window, window_start_deg):
         if max_dist > RANGE:
             max_dist = RANGE
         return max_dist, angle_deg
-    
-
 
 def update():
     global WINDOW
@@ -72,16 +70,12 @@ def update():
     target_angle = (right_wt * right_max_dist - left_wt * left_max_dist)/total_dist
     angle = target_angle * KP
     angle = rc_utils.clamp(angle, -1, 1)
-    speed = rc_utils.remap_range(abs(angle), 0, 1, 1, 0.6, saturate=True)
+    speed = rc_utils.remap_range(abs(angle), 0, 1, 1, 0.1, saturate=True)
     print(f"{right_angle=}, {left_angle=}, {right_max_dist=}, {left_max_dist=} {target_angle=}")
     rc.drive.set_speed_angle(speed, angle)
 
-
-def update_slow():
-    pass
-
 if __name__ == "__main__":
-    rc.set_start_update(start, update, update_slow)
+    rc.set_start_update(start, update)
     rc.go()
 
 
