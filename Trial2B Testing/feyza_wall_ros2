@@ -1,9 +1,6 @@
 import sys
 import math
-import threading
 
-import rclpy
-from rclpy.node import Node
 from geometry_msgs.msg import Vector3Stamped
 
 # If this file is nested inside a folder in the labs folder,
@@ -28,48 +25,31 @@ RANGE = 200
 ROBOT_HALF_WIDTH = 10
 SAMPLES_PER_DEGREE = 1080 / 360
 
-# added this so the wall follower can store attitude values
+# added these to store attitude values
 roll = 0.0
 pitch = 0.0
 yaw = 0.0
 attitude_received = False
 
-# added these for running ROS2 alongside racecar_core
-attitude_node = None
-ros_thread = None
+# added this to keep the ROS2 subscription alive
+attitude_subscription = None
 
 
 ########################################################################################
-# ROS2 attitude subscriber
+# Attitude subscriber
 ########################################################################################
 
-# added this node to listen to the /attitude topic
-class AttitudeSubscriber(Node):
-    def __init__(self):
-        super().__init__("wall_follower_attitude_subscriber")
+# added this to receive roll, pitch, and yaw from /attitude
+def attitude_callback(msg):
+    global roll, pitch, yaw, attitude_received
 
-        self.create_subscription(
-            Vector3Stamped,
-            "/attitude",
-            self.attitude_callback,
-            10
-        )
+    # Vector3Stamped uses x, y, and z:
+    # x = roll, y = pitch, z = yaw
+    roll = msg.vector.x
+    pitch = msg.vector.y
+    yaw = msg.vector.z
 
-    def attitude_callback(self, msg):
-        global roll, pitch, yaw, attitude_received
-
-        # Vector3Stamped uses x, y, z
-        # x means roll, y means pitch, z means yaw
-        roll = msg.vector.x
-        pitch = msg.vector.y
-        yaw = msg.vector.z
-
-        attitude_received = True
-
-
-# added this so ROS2 can run without stopping the wall follower loop
-def spin_attitude_node():
-    rclpy.spin(attitude_node)
+    attitude_received = True
 
 
 ########################################################################################
@@ -77,34 +57,28 @@ def spin_attitude_node():
 ########################################################################################
 
 def start():
-    global attitude_node, ros_thread
+    global attitude_subscription
 
     rc.drive.set_speed_angle(0, 0)
     rc.drive.set_max_speed(1)
 
-    # added this to start the ROS2 attitude subscriber
-    if not rclpy.ok():
-        rclpy.init()
+    # added this to use racecar_core's existing ROS2 node
+    if attitude_subscription is None:
+        racecar_node = rc._RacecarReal__rate_node
 
-    attitude_node = AttitudeSubscriber()
-
-    ros_thread = threading.Thread(
-        target=spin_attitude_node,
-        daemon=True
-    )
-
-    ros_thread.start()
+        attitude_subscription = racecar_node.create_subscription(
+            Vector3Stamped,
+            "/attitude",
+            attitude_callback,
+            10
+        )
 
     print("Wall follower started")
     print("Listening to /attitude")
 
 
 def is_valid(dist):
-    return (
-        dist is not None
-        and not math.isnan(dist)
-        and dist > MIN_VALID_DIST
-    )
+    return dist is not None and dist > MIN_VALID_DIST
 
 
 def get_angle_range(scan, start_deg, end_deg):
@@ -169,7 +143,7 @@ def update():
     left_wt = (360 - left_angle) + 90
     right_wt = right_angle + 90
 
-    # math.cos needs radians, so the angles are converted here
+    # convert degrees to radians before using math.cos
     left_angle_radians = math.radians(360 - left_angle)
     right_angle_radians = math.radians(right_angle)
 
@@ -216,7 +190,7 @@ def update():
         saturate=True
     )
 
-    # added this section to use the attitude readings
+    # added this to display and use the attitude values
     if attitude_received:
         roll_degrees = math.degrees(roll)
         pitch_degrees = math.degrees(pitch)
@@ -266,24 +240,10 @@ def update_slow():
 ########################################################################################
 
 if __name__ == "__main__":
-    try:
-        rc.set_start_update(
-            start,
-            update,
-            update_slow
-        )
+    rc.set_start_update(
+        start,
+        update,
+        update_slow
+    )
 
-        rc.go()
-
-    except KeyboardInterrupt:
-        pass
-
-    finally:
-        rc.drive.set_speed_angle(0, 0)
-
-        # added this to safely shut down the ROS2 subscriber
-        if attitude_node is not None:
-            attitude_node.destroy_node()
-
-        if rclpy.ok():
-            rclpy.shutdown()
+    rc.go()
