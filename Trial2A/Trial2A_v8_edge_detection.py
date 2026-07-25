@@ -32,7 +32,7 @@ import cv2 as cv
 from matplotlib import pyplot as plt
 import numpy as np
 import csv
-
+from scipy.interpolate import splprep, splev
 import yaml
 
 # If this file is nested inside a folder in the labs folder, the relative path should
@@ -54,13 +54,15 @@ MIN_CONTOUR_AREA = 100
 # A crop window for the floor directly in front of the car
 # 480 x 320
 # CROP_FLOOR = ((360, 0), (rc.camera.get_height(), rc.camera.get_width()))
-CROP_FLOOR = ((310, 0), (rc.camera.get_height() - 45, rc.camera.get_width())) 
-CROP_MID = ((260, 0), (310, rc.camera.get_width()))
+CROP_FLOOR = ((230, 0), (rc.camera.get_height() - 45, rc.camera.get_width())) 
+# CROP_CEILING = ((0, 0), (100, rc.camera.get_width()))
 
 CROP_HEIGHT = rc.camera.get_height() // 6
 CROP_WIDTH = rc.camera.get_width() // 1
 ROWS = rc.camera.get_height() // CROP_HEIGHT
 COLS = rc.camera.get_width() // CROP_WIDTH
+
+LOOK_AHEAD = 100
 
 # TODO Part 1: Determine the HSV color threshold pairs for GREEN and RED
 # Colors, stored as a pair (hsv_min, hsv_max) Hint: Lab E!
@@ -101,91 +103,11 @@ with open("config.yaml", "r") as file:
 # Functions
 ########################################################################################
 
-# [FUNCTION] Finds contours in the current color image and uses them to update 
-# contour_center and contour_area
-def update_contour(save = 'False'):
-    global contour_center
-    global contour_area
-    global indx
-
-    image = rc.camera.get_color_image()
-
-    if image is None:
-        contour_area = 0
-    else:
-        # TODO Part 2: Search for line colors, and update the global variables
-        # contour_center and contour_area with the largest contour found
-        max_contour_lst = [[]]
-        row_indx = 0
-        for row in range(ROWS // 2, ROWS-1):
-            for col in range(COLS):
-                crop_lower = (row * CROP_HEIGHT, col * CROP_WIDTH)
-                crop_upper = ((row + 1) * CROP_HEIGHT, (col + 1) * CROP_WIDTH)
-
-                image_indx = rc_utils.crop(image, crop_lower, crop_upper)
-
-                max_contour = []
-                contours = rc_utils.find_contours(image_indx, BLUE[0], BLUE[1])
-
-                for contour in contours:
-                    if cv.contourArea(contour) > MIN_CONTOUR_AREA:
-                        if len(max_contour) == 0 or cv.contourArea(contour) > cv.contourArea(max_contour):
-                            max_contour = contour
-
-                if len(max_contour) == 0:
-                    max_contour_lst[row_indx].append([])
-                    pass
-                else:
-                    max_contour_lst[row_indx].append([max_contour, crop_lower])
-                    rc_utils.draw_contour(image_indx, max_contour, color=(0, 0, 255))
-
-                # cv.imwrite('photo_' + str(row) + ' ' + str(col) + '.png', image_indx)
-                indx += 1
-            max_contour_lst.append([])
-            row_indx += 1
-        
-        # print(max_contour_lst)
-
-        largest_contour = None
-        largest_area = 0
-        largest_crop_lower = 0
-        for row_contours in max_contour_lst:
-            for contour in row_contours:
-                if len(contour) > 0:
-                    area = rc_utils.get_contour_area(contour[0])
-                    if area > largest_area:
-                        largest_area = area
-                        largest_contour = contour[0]
-                        largest_crop_lower = contour[1] # (y, x)
-
-        contour_center = None
-        if largest_contour is not None:
-            contour_center = rc_utils.get_contour_center(largest_contour)
-            # print(contour_center, largest_crop_lower)
-            contour_center = (
-                min(rc.camera.get_height(), contour_center[0] + largest_crop_lower[0]),
-                min(rc.camera.get_width(), max(0, contour_center[1] + OFFSET + largest_crop_lower[1]))
-            )
-
-            rc_utils.draw_contour(image, largest_contour, color=(0, 255, 0))
-            rc_utils.draw_circle(image, contour_center, color=(150, 150, 0))
-            print("  ", contour_center)
-
-        # Display the image_lower to the screen
-        rc.display.show_color_image(image)
-
-        if save:
-            # cv.imwrite('photo_upper_' + str(indx) + '.png', image_upper)
-            # cv.imwrite('photo_lower_' + str(indx) + '.png', image_lower)
-            cv.imwrite('photo_' + str(indx) + '.png', image)
-
-        indx += 1
-
-        return contour_center
 
 def update_contour():
     img = rc.camera.get_color_image()
     # img = cv.imread('Straight.png')
+    img = rc_utils.crop(img, CROP_FLOOR[0], CROP_FLOOR[1])
     # cv.imwrite('Straight_out.png')
     # img = rc_utils.crop(img, img.)
     # TODO: try different exposures
@@ -198,7 +120,7 @@ def update_contour():
     blue_mask = cv.inRange(blurred, (0, 115, 162), (95, 139, 255)) # simulation
     # cv.imwrite('Trial2C_straight_Blue_mask.png', blue_mask)
     masked = cv.bitwise_and(img_fixed, img_fixed, mask=blue_mask)
-    # cv.imwrite('Trial2C_straight_Blue.png', masked)
+    cv.imwrite('Trial2C_straight_Blue.png', masked)
     # gray = cv.cvtColor(blue_mask, cv.COLOR_BGR2GRAY)
     edges = cv.Canny(masked,100,200)
     # plt.subplot(121),plt.imshow(blue_mask,cmap = 'gray')
@@ -206,25 +128,59 @@ def update_contour():
     # plt.subplot(122),plt.imshow(edges,cmap = 'gray')
     # plt.title('Edge Image'), plt.xticks([]), plt.yticks([])
     # plt.savefig('Trial2C_edges.png')
-    cv.imwrite('Trial2C_edges.png', edges)
+    # cv.imwrite('Trial2C_edges.png', edges)
 
-    contours, hierarchy = cv.findContours(edges, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv.findContours(edges, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE) # get all outer contours (only edges)
     cv.drawContours(img, contours, -1, (0, 255, 0), 2)
     # cv.imwrite('Trial2C_contours.png', img)
 
-    largest_contour = max(contours, key=cv.contourArea)
-    largest_contour_center = rc_utils.get_contour_center(largest_contour)
-    largest_contour_center = (largest_contour_center[0], max(0, largest_contour_center[1] + OFFSET))
-    # print(largest_contour_center)
+    largest_contour_center = None
+    if len(contours) > 0:
+        largest_contour = max(contours, key=cv.contourArea)
 
-    rc_utils.draw_contour(img, largest_contour, color=(0, 255, 0))
-    rc_utils.draw_circle(img, largest_contour_center, color=(150, 150, 0))
+        # Get thin line in the middle of the contours
+        mask = np.zeros(img.shape[:2], dtype=np.uint8)
+        cv.drawContours(mask, largest_contour, -1, 255, -1)
+        masked_gray = cv.cvtColor(masked, cv.COLOR_BGR2GRAY)
+        thin = cv.ximgproc.thinning(masked_gray, thinningType=cv.ximgproc.THINNING_GUOHALL)
+        cv.imwrite('Trial2C_thin.png', thin)
+
+        # Find middle line contour
+        middle_contours = cv.findContours(thin, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+        middle_contours = middle_contours[0] if len(middle_contours) == 2 else middle_contours[1]
+        middle_contour = max(middle_contours, key=cv.contourArea)
+
+        # Get intersection with look ahead distance
+        circle_mask = np.zeros(img.shape[:2], dtype=np.uint8)
+        h, w = img.shape[:2]
+        center_coords = (w // 2, h)
+        cv.circle(circle_mask, center_coords, LOOK_AHEAD, 255, 1)
+        line_mask = np.zeros(img.shape[:2], dtype=np.uint8)
+        cv.drawContours(line_mask, middle_contour, -1, 255, -1)
+        cv.imwrite('Trial2C_circle.png', circle_mask)
+        cv.imwrite('Trial2C_line.png', line_mask)
+        intersection_mask = cv.bitwise_and(circle_mask, line_mask)
+        intersection_points = np.argwhere(intersection_mask == 255)
+
+        rc_utils.draw_contour(img, middle_contour, color=(0, 255, 0))
+
+        if len(intersection_points) != 0:
+            target_point = (intersection_points[0][0], max(0, intersection_points[0][1] + OFFSET))
+            rc_utils.draw_circle(img, target_point, color=(150, 150, 0))
+        else:
+            target_point = rc_utils.get_contour_center(largest_contour)
+            target_point = (target_point[0], max(0, target_point[1] + OFFSET))
+            rc_utils.draw_circle(img, target_point, color=(255, 0, 0))
+
+        print(target_point)
+    else:
+        target_point = None
 
     rc.display.show_color_image(img)
 
     # largest_contour = (0,0)
 
-    return rc_utils.get_contour_center(largest_contour)
+    return target_point
 
 # [FUNCTION] The start function is run once every time the start button is pressed
 def start():
@@ -348,7 +304,7 @@ def update():
 # [FUNCTION] update_slow() is similar to update() but is called once per second by
 # default. It is especially useful for printing debug messages, since printing a 
 # message every frame in update is computationally expensive and creates clutter
-def update_slow2():
+def update_slow():
     """
     After start() is run, this function is run at a constant rate that is slower
     than update().  By default, update_slow() is run once per second
@@ -388,6 +344,5 @@ def update_slow2():
 ########################################################################################
 
 if __name__ == "__main__":
-    # rc.set_start_update(start, update, update_slow)
-    rc.set_start_update(start, update)
+    rc.set_start_update(start, update, update_slow)
     rc.go()
