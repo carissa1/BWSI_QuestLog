@@ -49,7 +49,7 @@ rc = racecar_core.create_racecar()
 
 # >> Constants
 # The smallest contour we will recognize as a valid contour
-MIN_CONTOUR_AREA = 80
+MIN_CONTOUR_AREA = 100
 
 # A crop window for the floor directly in front of the car
 # 480 x 320
@@ -184,36 +184,45 @@ def update_contour(save = 'False'):
         return contour_center
 
 def update_contour():
-    # img = rc.camera.get_color_image()
-    img = cv.imread('Straight.png')
+    img = rc.camera.get_color_image()
+    # img = cv.imread('Straight.png')
     # cv.imwrite('Straight_out.png')
     # img = rc_utils.crop(img, img.)
     # TODO: try different exposures
     # img_hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
     img_fixed = cv.cvtColor(img, cv.COLOR_BGR2RGB)
-    cv.imwrite('Trial2C_Straight.png', img_fixed)
+    # cv.imwrite('Trial2C_Straight.png', img_fixed)
     blurred = cv.GaussianBlur(img_fixed, (5, 5), 1)
-    cv.imwrite('Trial2C_blurred.png', blurred)
-    blue_mask = cv.inRange(blurred, (75, 130, 162), (95, 139, 169)) # (30, 80, 80), (120, 160, 170)
-    cv.imwrite('Trial2C_straight_Blue_mask.png', blue_mask)
+    # cv.imwrite('Trial2C_blurred.png', blurred)
+    # blue_mask = cv.inRange(blurred, (75, 130, 162), (95, 139, 169)) # real
+    blue_mask = cv.inRange(blurred, (0, 115, 162), (95, 139, 255)) # simulation
+    # cv.imwrite('Trial2C_straight_Blue_mask.png', blue_mask)
     masked = cv.bitwise_and(img_fixed, img_fixed, mask=blue_mask)
-    cv.imwrite('Trial2C_straight_Blue.png', masked)
+    # cv.imwrite('Trial2C_straight_Blue.png', masked)
     # gray = cv.cvtColor(blue_mask, cv.COLOR_BGR2GRAY)
     edges = cv.Canny(masked,100,200)
-    plt.subplot(121),plt.imshow(blue_mask,cmap = 'gray')
-    plt.title('Original Image'), plt.xticks([]), plt.yticks([])
-    plt.subplot(122),plt.imshow(edges,cmap = 'gray')
-    plt.title('Edge Image'), plt.xticks([]), plt.yticks([])
-    plt.savefig('Trial2C_edges.png')
+    # plt.subplot(121),plt.imshow(blue_mask,cmap = 'gray')
+    # plt.title('Original Image'), plt.xticks([]), plt.yticks([])
+    # plt.subplot(122),plt.imshow(edges,cmap = 'gray')
+    # plt.title('Edge Image'), plt.xticks([]), plt.yticks([])
+    # plt.savefig('Trial2C_edges.png')
     cv.imwrite('Trial2C_edges.png', edges)
 
     contours, hierarchy = cv.findContours(edges, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
     cv.drawContours(img, contours, -1, (0, 255, 0), 2)
-    cv.imwrite('Trial2C_contours.png', img)
+    # cv.imwrite('Trial2C_contours.png', img)
 
-    # largest_contour = max(contours, key=cv.contourArea)
+    largest_contour = max(contours, key=cv.contourArea)
+    largest_contour_center = rc_utils.get_contour_center(largest_contour)
+    largest_contour_center = (largest_contour_center[0], max(0, largest_contour_center[1] + OFFSET))
+    # print(largest_contour_center)
 
-    largest_contour = (0,0)
+    rc_utils.draw_contour(img, largest_contour, color=(0, 255, 0))
+    rc_utils.draw_circle(img, largest_contour_center, color=(150, 150, 0))
+
+    rc.display.show_color_image(img)
+
+    # largest_contour = (0,0)
 
     return rc_utils.get_contour_center(largest_contour)
 
@@ -230,7 +239,7 @@ def start():
     rc.drive.set_speed_angle(speed, angle)
 
     # Set update_slow to refresh every 5 seconds
-    rc.set_update_slow_time(5)
+    rc.set_update_slow_time(1)
 
     data = ['Speed', 'Angle', 'Error']
 
@@ -319,7 +328,7 @@ def update():
 
     rc.drive.set_speed_angle(speed, angle)
 
-    data = [speed, angle, error]
+    data = [speed, angle, raw_error]
 
     with open('log.csv', mode='a', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
@@ -327,7 +336,7 @@ def update():
 
     print("SPEED: ", speed)
     print("ANGLE: ", angle)
-    print("ERROR: ", error)
+    print("ERROR: ", raw_error)
 
     # Print the center and area of the largest contour when B is held down
     # if rc.controller.is_down(rc.controller.Button.B):
@@ -339,7 +348,7 @@ def update():
 # [FUNCTION] update_slow() is similar to update() but is called once per second by
 # default. It is especially useful for printing debug messages, since printing a 
 # message every frame in update is computationally expensive and creates clutter
-def update_slow():
+def update_slow2():
     """
     After start() is run, this function is run at a constant rate that is slower
     than update().  By default, update_slow() is run once per second
