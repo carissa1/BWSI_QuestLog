@@ -54,7 +54,7 @@ MIN_CONTOUR_AREA = 100
 # A crop window for the floor directly in front of the car
 # 480 x 320
 # CROP_FLOOR = ((360, 0), (rc.camera.get_height(), rc.camera.get_width()))
-CROP_FLOOR = ((230, 0), (rc.camera.get_height() - 45, rc.camera.get_width())) 
+CROP_FLOOR = ((240, 0), (rc.camera.get_height(), rc.camera.get_width())) 
 # CROP_CEILING = ((0, 0), (100, rc.camera.get_width()))
 
 CROP_HEIGHT = rc.camera.get_height() // 6
@@ -86,6 +86,8 @@ error = 0
 filtered_error = 0
 ALPHA = 1 # 0.3
 
+indx = 0
+
 last_angle = 0.0
 MAX_ANGLE_DELTA = 0.4
 
@@ -104,21 +106,22 @@ with open("config.yaml", "r") as file:
 ########################################################################################
 
 
-def update_contour():
-    img = rc.camera.get_color_image()
-    # img = cv.imread('Straight.png')
+def update_contour(save = False):
+    global indx
+    # img = rc.camera.get_color_image()
+    img = cv.imread('Straight.png')
     img = rc_utils.crop(img, CROP_FLOOR[0], CROP_FLOOR[1])
     # cv.imwrite('Straight_out.png')
     # img = rc_utils.crop(img, img.)
     # TODO: try different exposures
-    # img_hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
+    img_hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
     img_fixed = cv.cvtColor(img, cv.COLOR_BGR2RGB)
-    # cv.imwrite('Trial2C_Straight.png', img_fixed)
+    cv.imwrite('Trial2C_Straight.png', img_fixed)
     blurred = cv.GaussianBlur(img_fixed, (5, 5), 1)
-    # cv.imwrite('Trial2C_blurred.png', blurred)
+    cv.imwrite('Trial2C_blurred.png', blurred)
     # blue_mask = cv.inRange(blurred, (75, 130, 162), (95, 139, 169)) # real
-    blue_mask = cv.inRange(blurred, (0, 115, 162), (95, 139, 255)) # simulation
-    # cv.imwrite('Trial2C_straight_Blue_mask.png', blue_mask)
+    blue_mask = cv.inRange(blurred, (0, 130, 130), (100, 255, 255)) # simulation
+    cv.imwrite('Trial2C_straight_Blue_mask.png', blue_mask)
     masked = cv.bitwise_and(img_fixed, img_fixed, mask=blue_mask)
     cv.imwrite('Trial2C_straight_Blue.png', masked)
     # gray = cv.cvtColor(blue_mask, cv.COLOR_BGR2GRAY)
@@ -128,11 +131,15 @@ def update_contour():
     # plt.subplot(122),plt.imshow(edges,cmap = 'gray')
     # plt.title('Edge Image'), plt.xticks([]), plt.yticks([])
     # plt.savefig('Trial2C_edges.png')
-    # cv.imwrite('Trial2C_edges.png', edges)
+    cv.imwrite('Trial2C_edges.png', edges)
 
-    contours, _ = cv.findContours(edges, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE) # get all outer contours (only edges)
+    contours_orig, _ = cv.findContours(edges, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE) # get all outer contours (only edges)
+    contours = []
+    for i in range(len(contours_orig)):
+        if cv.contourArea(contours_orig[i]) > MIN_CONTOUR_AREA:
+            contours.append(contours_orig[i])
     cv.drawContours(img, contours, -1, (0, 255, 0), 2)
-    # cv.imwrite('Trial2C_contours.png', img)
+    cv.imwrite('Trial2C_contours.png', img)
 
     largest_contour_center = None
     if len(contours) > 0:
@@ -169,14 +176,20 @@ def update_contour():
             rc_utils.draw_circle(img, target_point, color=(150, 150, 0))
         else:
             target_point = rc_utils.get_contour_center(largest_contour)
-            target_point = (target_point[0], max(0, target_point[1] + OFFSET))
-            rc_utils.draw_circle(img, target_point, color=(255, 0, 0))
-
-        print(target_point)
+            if target_point != None:
+                target_point = (target_point[0], max(0, target_point[1] + OFFSET))
+                rc_utils.draw_circle(img, target_point, color=(255, 0, 0))
     else:
         target_point = None
 
-    rc.display.show_color_image(img)
+    if save:
+        cv.imwrite('Image_' + str(indx) + '.png', blurred)
+        cv.imwrite('Contours_' + str(indx) + '.png', img)
+        indx += 1
+
+    print(target_point)
+
+    # rc.display.show_color_image(img)
 
     # largest_contour = (0,0)
 
@@ -195,7 +208,7 @@ def start():
     rc.drive.set_speed_angle(speed, angle)
 
     # Set update_slow to refresh every 5 seconds
-    rc.set_update_slow_time(1)
+    rc.set_update_slow_time(0.1)
 
     data = ['Speed', 'Angle', 'Error']
 
@@ -324,7 +337,7 @@ def update_slow():
     #         s[int(contour_center[1] / 20)] = "|"
     #         print("".join(s) + " : area = " + str(contour_area))
 
-    # update_contour(True)
+    contour = update_contour(True)
     # Canny_Test()
 
     # print("SPEED: ", speed)

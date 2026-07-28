@@ -99,7 +99,8 @@ def update_contour(save = 'False'):
     global contour_area
     global indx
 
-    image = rc.camera.get_color_image()
+    # image = rc.camera.get_color_image()
+    image = cv.imread('Straight.png')
 
     if image is None:
         contour_center = None
@@ -111,10 +112,21 @@ def update_contour(save = 'False'):
         # TODO Part 2: Search for line colors, and update the global variables
         # contour_center and contour_area with the largest contour found
         hsv = cv.cvtColor(image, cv.COLOR_BGR2HSV)
+        hsv[:, :, 2] = 100
+        result = cv.cvtColor(hsv, cv.COLOR_HSV2BGR)
+
+        y = 160
+        x = 400
+        hsv_pixel = hsv[y, x]
+        print(hsv_pixel)
+        # 178 24 100
+        # 101 130 100
+        # 102 129 100
+
         max_contour = []
         # contours_list = []
         # for color in COLOR_PRIORITY:
-        contours = rc_utils.find_contours(image, BLUE[0], BLUE[1])
+        contours = rc_utils.find_contours(hsv, BLUE[0], BLUE[1])
         # contours = rc_utils.find_contours(image, color[0], color[1])
         # contours_list.extend(contours)
         for contour in contours:
@@ -140,7 +152,8 @@ def update_contour(save = 'False'):
             rc_utils.draw_circle(image, contour_center)
 
         # Display the image to the screen
-        # rc.display.show_color_image(image)
+        rc_utils.draw_circle(result, (y, x))
+        rc.display.show_color_image(result)
 
         # if save:
             # cv.imwrite('photo_' + str(indx) + '.png', image)
