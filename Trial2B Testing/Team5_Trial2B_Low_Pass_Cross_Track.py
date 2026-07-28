@@ -35,10 +35,11 @@ running through the race in "race mode" to do the full course. Lowest time wins!
 
 import sys
 import math
+import csv
 
 # If this file is nested inside a folder in the labs folder, the relative path should
 # be [1, ../../library] instead.
-sys.path.insert(0, '../library')
+sys.path.insert(1, '../../library')
 import racecar_core
 import racecar_utils as rc_utils
 
@@ -49,8 +50,8 @@ import racecar_utils as rc_utils
 rc = racecar_core.create_racecar()
 
 
-WINDOW_ANGLE = 6            # half-width (deg) averaged per reading -> smooths noise & small gaps
-DELTA_ANGLE = 45            # deg between each side's "side ray" and its "front-diagonal ray"
+WINDOW_ANGLE = 30            # half-width (deg) averaged per reading -> smooths noise & small gaps
+DELTA_ANGLE = 60            # deg between each side's "side ray" and its "front-diagonal ray"
 
 RIGHT_SIDE_ANGLE = 90
 RIGHT_FRONT_ANGLE = RIGHT_SIDE_ANGLE - DELTA_ANGLE      # 45 deg
@@ -58,25 +59,25 @@ LEFT_SIDE_ANGLE = 270
 LEFT_FRONT_ANGLE = LEFT_SIDE_ANGLE + DELTA_ANGLE        # 315 deg
 
 FRONT_ANGLE = 0
-FRONT_WINDOW_ANGLE = 12
+FRONT_WINDOW_ANGLE = 30
 
-LOOKAHEAD = 60              # how far ahead we predict our distance from each wall
-TARGET_WALL_DIST = 60       # desired distance from a single wall when only one is visible
+LOOKAHEAD = 150              # how far ahead we predict our distance from each wall   
 MIN_VALID_DIST = 1          # readings at/below this count as "no wall there"
 
 MAX_SPEED = 1.0
-MIN_SPEED = 0.25
-SLOW_DOWN_DIST = 150        # start slowing down once front clearance drops below this
-CRITICAL_FRONT_DIST = 45    # below this, drop the PD math and force an emergency turn
-
-KP, KD = 0.012, 0.02                 # gains when following a single wall
-KP_CENTER, KD_CENTER = 0.01, 0.015   # gains when centering between two walls
+MIN_SPEED = 0.6
+SLOW_DOWN_DIST = 30      # start slowing down once front clearance drops below this
+CRITICAL_FRONT_DIST = 50    # below this, drop the PD math and force an emergency turn        
+KP_CENTER, KD_CENTER = 0.0025, 0.002   # gains when centering between two walls
+KP = 0.0025
+KD = 0.00
+alpha = 0.5
 
 # ---- State carried between frames -------------------------------------------------------
 prev_error = 0
 last_speed = 0
 last_angle = 0
-
+filtered_error = 0
 
 ########################################################################################
 # Functions
@@ -89,6 +90,12 @@ def start():
     last_speed = 0
     last_angle = 0
     rc.drive.set_speed_angle(0, 0)
+    data = ['Speed', 'Angle', 'Error', 'lidar_left', 'lidar_right', 'lidar_front']
+
+    with open('log_wall.csv', mode='w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(data)
+
 
 
 def is_valid(dist):
@@ -116,9 +123,11 @@ def get_wall_reading(scan, side_angle, front_angle, theta_deg):
 # 60 frames per second or slower depending on processing speed) until the back button
 # is pressed
 def update():
-    global prev_error, last_speed, last_angle
+    global prev_error, last_speed, last_angle, filtered_error
 
     scan = rc.lidar.get_samples()
+
+    rc.drive.set_max_speed(1)
 
     right_dist, right_pred = get_wall_reading(scan, RIGHT_SIDE_ANGLE, RIGHT_FRONT_ANGLE, DELTA_ANGLE)
     left_dist, left_pred = get_wall_reading(scan, LEFT_SIDE_ANGLE, LEFT_FRONT_ANGLE, DELTA_ANGLE)
@@ -128,22 +137,15 @@ def update():
 
     # ---- Pick a steering error based on which wall(s) are visible this frame ----
     if have_right and have_left:
-
-        error = (right_pred - left_pred) / 2
+        error = (right_pred - left_pred)+(right_dist - left_dist) / 2
+        filtered_error = alpha * error + (1-alpha) * filtered_error
         kp, kd = KP_CENTER, KD_CENTER
-    elif have_right:
-        error = right_pred - TARGET_WALL_DIST       # too far from right wall -> steer right (+)
-        kp, kd = KP, KD
-    elif have_left:
-        error = -(left_pred - TARGET_WALL_DIST)      # too far from left wall -> steer left (-)
-        kp, kd = KP, KD
     else:
-        error = 0  # no walls in sight at all -- go straight until we pick one back up
+        filtered_error = 0  # no walls in sight at all -- go straight until we pick one back up
         kp, kd = KP, KD
 
-    angle = kp * error + kd * (error - prev_error)
-    prev_error = error
-
+    angle = kp * filtered_error + kd * (filtered_error - prev_error)
+    prev_error = filtered_error
    
     front_dist = rc_utils.get_lidar_average_distance(scan, FRONT_ANGLE, FRONT_WINDOW_ANGLE)
     if not is_valid(front_dist):
@@ -153,8 +155,8 @@ def update():
        
         right_room = right_dist if have_right else float("inf")
         left_room = left_dist if have_left else float("inf")
-        angle = 1.0 if right_room > left_room else -1.0
-        speed = -0.2
+        angle = 0.6 if right_room > left_room else -0.6
+        speed = 0.2
     else:
         angle = rc_utils.clamp(angle, -1, 1)
         # Slow down approaching corners/dead-ends or while turning sharply; speed back
@@ -165,13 +167,38 @@ def update():
         speed_for_turn = rc_utils.remap_range(abs(angle), 0, 1, MAX_SPEED, MIN_SPEED, True)
         speed = rc_utils.clamp(min(speed_for_clearance, speed_for_turn), MIN_SPEED, MAX_SPEED)
 
+    # if right_dist is None:
+    #     angle = 0.65
+    # elif left_dist is None:
+    #     angle = -0.65
+    # elif right_dist - left_dist > 60:
+    #     angle = 0.65
+    
+    # rt = rc.controller.get_trigger(rc.controller.Trigger.RIGHT)
+    # lt = rc.controller.get_trigger(rc.controller.Trigger.LEFT)
+    # if rt > 0.2:
+    #     angle = 0.6
+    # if lt > 0.2:
+    #     angle = -0.6
+
     last_speed, last_angle = speed, angle
     rc.drive.set_speed_angle(speed, angle)
+    print("Speed: ", speed, " Angle:", angle)
+    print(f"right={right_dist}  left={left_dist} front={front_dist}")
+
+    data = [speed, angle, filtered_error, left_dist, right_dist, front_dist]
+
+    with open('log_wall.csv', mode='a', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(data)
+
+
+
 
 
 
 def update_slow():
-    print(f"speed={last_speed:.2f}  angle={last_angle:.2f}  err={prev_error:.1f}")
+    print(f"speed={last_speed}  angle={last_angle}  err={prev_error:.1f}")
 
 
 ########################################################################################
