@@ -55,15 +55,15 @@ last_color = ""
 
 current_state = "APPROACH"
 last_angle = 0 
-
+indx = 0 
 queue = []
 
 ########################################################################################
 # Functions
 ########################################################################################
 def update_contour():
-    
-    global contour_center, contour_color, contour_area
+
+    global contour_center, contour_color, contour_area, indx
     contour = None
 
     contour_color = ""
@@ -111,8 +111,9 @@ def update_contour():
         else:
             contour_center = None
             contour_area = 0 
-        rc.display.show_color_image(image)
-
+        # rc.display.show_color_image(image)
+    cv.imwrite('photo_' + str(indx) + '.png', image)
+    indx +=1
 
 
 
