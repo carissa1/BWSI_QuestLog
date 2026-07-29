@@ -39,8 +39,8 @@ rc = racecar_core.create_racecar()
 
 
 MIN_CONTOUR_AREA = 1000
-RED = ((175, 172, 109), (179, 209, 255))  # The HSV range for the color red
-GREEN = ((28, 100, 28), (90, 255, 255)) 
+RED = ((0, 100, 100), (30, 255, 255))  # red/orange
+GREEN = ((35, 50, 50), (75, 255, 255)) # hsv value for green 
 
 BLUE = ((110, 187, 162), (113, 233, 255))
 CROP_FLOOR = ((50, 0), (rc.camera.get_height(), rc.camera.get_width()))
@@ -181,7 +181,7 @@ def update():
                 angle = 0.3
             else:
                 angle = last_angle
-            queue.append([0.9, 1, angle])
+            queue.append([3, 1, angle])
     elif current_state == "SEARCH":
         speed = 0.4
         if last_color == "GREEN":
