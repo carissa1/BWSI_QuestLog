@@ -63,7 +63,7 @@ queue = []
 ########################################################################################
 def update_contour():
 
-    global contour_center, contour_color, contour_area, indx
+    global contour_center, contour_color, contour_area, indx, current_state
     contour = None
 
     contour_color = ""
@@ -112,7 +112,7 @@ def update_contour():
             contour_center = None
             contour_area = 0 
         # rc.display.show_color_image(image)
-    cv.imwrite('photo_' + str(indx) + '.png', image)
+    cv.imwrite('photo_' + str(indx) + current_state +'.png', image)
     indx +=1
 
 
@@ -145,7 +145,7 @@ def update():
     update_contour()
     depth = rc.camera.get_depth_image()
     distance = 0 
-    speed = 0.6
+    speed = 1
 
     if contour_center is not None:
         distance = depth[contour_center[0], contour_center[1]]
@@ -155,10 +155,10 @@ def update():
         if contour_center is not None:
             setpoint = rc.camera.get_width()//2
             present_value = contour_center[1]
-            if contour_color == "RED" and distance<100 and distance != 0:
+            if contour_color == "RED" and distance<160 and distance != 0:
                 present_value += 250
                 last_color = "RED"
-            elif contour_color == "GREEN" and distance <100 and distance != 0:
+            elif contour_color == "GREEN" and distance <160 and distance != 0:
                 present_value -= 250
                 last_color = "GREEN"
             
@@ -170,20 +170,19 @@ def update():
 
         else:
             current_state = "SEARCH"
-        if distance < 65 and distance != 0:
+        if distance < 20 and distance != 0:
             current_state = "TURN"
 
     elif current_state == "TURN":
         if len(queue) == 0:
-            if last_color == "GREEN" and last_angle >-0.3:
-                angle = -0.3
-            elif last_color == "RED" and last_angle <0.3:
-                angle = 0.3
+            if last_color == "GREEN" and last_angle >-0.5:
+                angle = -0.5
+            elif last_color == "RED" and last_angle <0.5:
+                angle = 0.5
             else:
                 angle = last_angle
-            queue.append([3, 1, angle])
+            queue.append([4, 1, angle])
     elif current_state == "SEARCH":
-        speed = 0.4
         if last_color == "GREEN":
             angle = 1
         else:
@@ -199,7 +198,7 @@ def update():
             current_state = "SEARCH"
     
 
-    print(f"{current_state=}, {contour_color=}")
+    print(f"{current_state=}, {contour_color=}, {distance=}")
 
     rc.drive.set_speed_angle(speed, angle)
 
