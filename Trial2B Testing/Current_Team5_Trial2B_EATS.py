@@ -15,15 +15,15 @@ import racecar_utils as rc_utils
 rc = racecar_core.create_racecar()
 
 WINDOW = 100
-RAY_WINDOW = 2
-KP = 0.01
+RAY_WINDOW = 10
+KP = 0.013
 MIN_VALID_DIST = 1
 RANGE = 125
 right_max_dist = 0
 left_max_dist = 0
 angle = 0
 speed = 1
-ROBOT_HALF_WIDTH = 8
+ROBOT_HALF_WIDTH = 0
 
 def start ():
     rc.drive.set_speed_angle(0, 0)
@@ -70,15 +70,10 @@ def update():
     target_angle = (right_wt * right_max_dist - left_wt * left_max_dist)/total_dist
     angle = target_angle * KP
     angle = rc_utils.clamp(angle, -1, 1)
-    speed = rc_utils.remap_range(abs(angle), 0, 1, 1, 0.35, saturate=True)
+    speed = rc_utils.remap_range(abs(angle), 0, 1, 1, 0.8, saturate=True)
     print(f"{right_angle=}, {left_angle=}, {right_max_dist=}, {left_max_dist=} {target_angle=}")
     rc.drive.set_speed_angle(speed, angle)
 
 if __name__ == "__main__":
     rc.set_start_update(start, update)
     rc.go()
-
-
-
-
-
