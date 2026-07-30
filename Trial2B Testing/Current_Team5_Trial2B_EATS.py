@@ -73,6 +73,8 @@ def update():
     speed = rc_utils.remap_range(abs(angle), 0, 1, 1, 0.8, saturate=True)
     print(f"{right_angle=}, {left_angle=}, {right_max_dist=}, {left_max_dist=} {target_angle=}")
     rc.drive.set_speed_angle(speed, angle)
+    rc.display.show_text(angle)
+
 
 if __name__ == "__main__":
     rc.set_start_update(start, update)
