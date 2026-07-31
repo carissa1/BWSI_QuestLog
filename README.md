@@ -9,10 +9,6 @@ Files are named after the template "Team5_Trial#_Version_Name". The finalized co
 
 
 
-**Currently working on improving line follower consistency and sign detection.**
-
-
-
 **Installations Needed**
 
 1. RACECAR simulator
@@ -29,4 +25,5 @@ Files are named after the template "Team5_Trial#_Version_Name". The finalized co
 4. Open terminal and run "python3 filename.py"
 
 
-**Contributions are only open to Team 5 members. **
+
+**Contributions are only open to Team 5 members.**
