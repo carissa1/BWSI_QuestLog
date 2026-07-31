@@ -70,10 +70,9 @@ def update():
     target_angle = (right_wt * right_max_dist - left_wt * left_max_dist)/total_dist
     angle = target_angle * KP
     angle = rc_utils.clamp(angle, -1, 1)
-    speed = rc_utils.remap_range(abs(angle), 0, 1, 1, 0.8, saturate=True)
+    speed = rc_utils.remap_range(abs(angle), 0, 1, 1, 0.5, saturate=True)
     print(f"{right_angle=}, {left_angle=}, {right_max_dist=}, {left_max_dist=} {target_angle=}")
     rc.drive.set_speed_angle(speed, angle)
-    rc.display.show_text(angle)
 
 
 if __name__ == "__main__":
