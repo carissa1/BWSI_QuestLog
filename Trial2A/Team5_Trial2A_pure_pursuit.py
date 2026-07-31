@@ -125,164 +125,164 @@ def update_contour(image, save = False):
 
     # image = cv.imread('test_img_13.png')
 
-    for i in range(1, 14):
-        image = cv.imread('test_img_' + str(i) + '.png')
-        # image = cv.imread('IMG_492' + str(i) + '.JPG')
-        # image = cv.imread('test_img_1.png')
-        target_point = None
-        target_angle = None
+    # for i in range(2, 10):
+    # image = cv.imread('test_img_' + str(i) + '.png')
+    # image = cv.imread('IMG_492' + str(i) + '.JPG')
+    # image = cv.imread('test_img_1.png')
+    target_point = None
+    target_angle = None
 
-        if image is None:
-            contour_center = None
-            contour_area = 0
-        else:
-            # Crop the image to the floor directly in front of the car
-            # image = rc_utils.crop(image, CROP_FLOOR[0], CROP_FLOOR[1])
+    if image is None:
+        contour_center = None
+        contour_area = 0
+    else:
+        # Crop the image to the floor directly in front of the car
+        image = rc_utils.crop(image, CROP_FLOOR[0], CROP_FLOOR[1])
 
-            if save:
-                cv.imwrite(str(indx) + '_photo.png', image)
+        if save:
+            cv.imwrite(str(indx) + '_photo.png', image)
 
-            # Change to hsv
-            hsv = cv.cvtColor(image, cv.COLOR_BGR2HSV)
-            blurred_hsv = cv.blur(hsv, (10, 10))
-            # blurred_img = cv.cvtColor(blurred_hsv, cv.COLOR_HSV2BGR)
-            # cv.imwrite('img_blur.png', blurred_hsv)
+        # Change to hsv
+        hsv = cv.cvtColor(image, cv.COLOR_BGR2HSV)
+        blurred_hsv = cv.blur(hsv, (10, 10))
+        # blurred_img = cv.cvtColor(blurred_hsv, cv.COLOR_HSV2BGR)
+        # cv.imwrite('img_blur.png', blurred_hsv)
 
-            y = 140
-            x = 440
-            hsv_pixel = hsv[y, x]
-            # print(hsv_pixel)
-            # 178 24 100
-            # 101 130 100
-            # 102 129 100
+        y = 140
+        x = 440
+        hsv_pixel = hsv[y, x]
+        # print(hsv_pixel)
+        # 178 24 100
+        # 101 130 100
+        # 102 129 100
 
-            # Fix glare holes by finding small holes
-            # kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (15, 15))
+        # Fix glare holes by finding small holes
+        # kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (15, 15))
 
-            # Use blue mask and glare mask to get the line
-            glare_mask = cv.inRange(blurred_hsv, (0, 0, 240), (179, 40, 255))  
-            kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (80, 80))
-            glare_mask = cv.dilate(glare_mask, kernel, iterations=1)
-            # cv.imwrite('img_glare.png', glare_mask)
-            color_mask = cv.inRange(blurred_hsv, BLUE[0], BLUE[1])
-            # cv.imwrite('img_color.png', color_mask)
-            mask = cv.bitwise_and(color_mask, cv.bitwise_not(glare_mask))
-            # mask = cv.morphologyEx(mask, cv.MORPH_CLOSE, kernel)
-            result = cv.bitwise_and(image, image, mask=mask)
-            cv.imwrite('img_mask.png', result)
+        # Use blue mask and glare mask to get the line
+        glare_mask = cv.inRange(blurred_hsv, (0, 0, 240), (179, 40, 255))  
+        kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (80, 80))
+        glare_mask = cv.dilate(glare_mask, kernel, iterations=1)
+        # cv.imwrite('img_glare.png', glare_mask)
+        color_mask = cv.inRange(blurred_hsv, BLUE[0], BLUE[1])
+        # cv.imwrite('img_color.png', color_mask)
+        mask = cv.bitwise_and(color_mask, cv.bitwise_not(glare_mask))
+        # mask = cv.morphologyEx(mask, cv.MORPH_CLOSE, kernel)
+        result = cv.bitwise_and(image, image, mask=mask)
+        cv.imwrite('img_mask.png', result)
 
-            max_contour = []
-            # contours_list = []
-            # for color in COLOR_PRIORITY:
-            contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-            # contours = rc_utils.find_contours(image, color[0], color[1])
-            # contours_list.extend(contours)
-            for contour in contours:
-                # print(cv.contourArea(contour))
-                if cv.contourArea(contour) > MIN_CONTOUR_AREA:
-                    if len(max_contour) == 0:
-                        max_contour = contour
-                    elif cv.contourArea(contour) > cv.contourArea(max_contour):
-                        max_contour = contour
-                # if len(max_contour) > 0:
-                #     break
+        max_contour = []
+        # contours_list = []
+        # for color in COLOR_PRIORITY:
+        contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+        # contours = rc_utils.find_contours(image, color[0], color[1])
+        # contours_list.extend(contours)
+        for contour in contours:
+            # print(cv.contourArea(contour))
+            if cv.contourArea(contour) > MIN_CONTOUR_AREA:
+                if len(max_contour) == 0:
+                    max_contour = contour
+                elif cv.contourArea(contour) > cv.contourArea(max_contour):
+                    max_contour = contour
+            # if len(max_contour) > 0:
+            #     break
 
-            # contours = rc_utils.find_contours(image, BLUE[0], BLUE[1])
-            # contour = rc_utils.get_largest_contour(contours, MIN_CONTOUR_AREA)
+        # contours = rc_utils.find_contours(image, BLUE[0], BLUE[1])
+        # contour = rc_utils.get_largest_contour(contours, MIN_CONTOUR_AREA)
 
-            if len(max_contour) > 0:
-                # rc_utils.draw_circle(result, contour_center)
-                contour_center = rc_utils.get_contour_center(max_contour)
-                contour_center = (contour_center[0], contour_center[1] + OFFSET)
-                if contour_center[1] < 1:
-                    contour_center = (contour_center[0], 0)
+        if len(max_contour) > 0:
+            # rc_utils.draw_circle(result, contour_center)
+            contour_center = rc_utils.get_contour_center(max_contour)
+            contour_center = (contour_center[0], contour_center[1] + OFFSET)
+            if contour_center[1] < 1:
+                contour_center = (contour_center[0], 0)
 
-                image_shape = hsv.shape
+            image_shape = hsv.shape
 
-                # last_contour_center = contour
+            # last_contour_center = contour
 
-                mask = np.zeros(image.shape[:2], np.uint8)
-                cv.drawContours(mask, [max_contour], -1, 255, -1)
-                ys = []
-                xs = []
-                for y in range(mask.shape[0]):
-                    cols = np.where(mask[y] > 0)[0]
+            mask = np.zeros(image.shape[:2], np.uint8)
+            cv.drawContours(mask, [max_contour], -1, 255, -1)
+            ys = []
+            xs = []
+            for y in range(mask.shape[0]):
+                cols = np.where(mask[y] > 0)[0]
 
-                    if len(cols) > 5:
-                        left = cols[0]
-                        right = cols[-1]
+                if len(cols) > 5:
+                    left = cols[0]
+                    right = cols[-1]
 
-                        xs.append((left + right) / 2)
-                        ys.append(y)
-                
-                idx = np.argmin(ys)
-                highest_point = (max(0, int(ys[idx]) + OFFSET), max(0, int(xs[idx])))
-                # highest_point = tuple(max_contour[max_contour[:, :, 1].argmin()][0])
-                # highest_point = (highest_point[1], highest_point[0])
-                rc_utils.draw_circle(image, highest_point)
-                target_point = (int(highest_point[0] * 0.8 + contour_center[0] * 0.2), int(highest_point[1] * 0.8 + contour_center[1] * 0.2))
-                # row, col
+                    xs.append((left + right) / 2)
+                    ys.append(y)
+            
+            idx = np.argmin(ys)
+            highest_point = (max(0, int(ys[idx]) + OFFSET), max(0, int(xs[idx])))
+            # highest_point = tuple(max_contour[max_contour[:, :, 1].argmin()][0])
+            # highest_point = (highest_point[1], highest_point[0])
+            rc_utils.draw_circle(image, highest_point)
+            target_point = (int(highest_point[0] * 0.8 + contour_center[0] * 0.2), int(highest_point[1] * 0.8 + contour_center[1] * 0.2))
+            # row, col
 
-                # Get target angle
-                target_angle = math.atan2(image_shape[0] - target_point[0], target_point[1] - (image_shape[1] // 2)) * 180 / math.pi
-                # print(target_point)
-                # print(contour_center)
-                target_angle = 90 - target_angle
-                print("TARGET ANGLE: ", target_angle)
+            # Get target angle
+            target_angle = math.atan2(image_shape[0] - target_point[0], target_point[1] - (image_shape[1] // 2)) * 180 / math.pi
+            # print(target_point)
+            # print(contour_center)
+            target_angle = 90 - target_angle
+            print("TARGET ANGLE: ", target_angle)
 
-                # pts = np.array(max_contour).reshape(-1, 2) # (x, y)
-                # x_coords = pts[:, 0]
-                # y_coords = pts[:, 1]
+            # pts = np.array(max_contour).reshape(-1, 2) # (x, y)
+            # x_coords = pts[:, 0]
+            # y_coords = pts[:, 1]
 
-                # coeffs = np.polyfit(xs, ys, 3) 
-                # x_plot = np.linspace(min(xs), max(xs), num=100).astype(int) # smooth out x values
-                # y_plot = np.polyval(coeffs, x_plot).astype(int) 
-                # curve_points = np.stack((x_plot, y_plot), axis=-1).reshape((-1, 1, 2))
+            # coeffs = np.polyfit(xs, ys, 3) 
+            # x_plot = np.linspace(min(xs), max(xs), num=100).astype(int) # smooth out x values
+            # y_plot = np.polyval(coeffs, x_plot).astype(int) 
+            # curve_points = np.stack((x_plot, y_plot), axis=-1).reshape((-1, 1, 2))
 
-                # if curve_points is not None:
-                #     # print('max points')
-                #     # print(image.shape)
-                #     # print(np.min(x_coords), np.max(x_coords))
-                #     # print(np.min(y_coords), np.max(y_coords))
-                #     top_indx = np.argmin(curve_points[:, 0, 1])
-                #     top_of_curve = curve_points[top_indx, 0]
-                #     col, row = top_of_curve
-                #     # rc_utils.draw_circle(image, top_of_curve)
-                #     # avg_x, avg_y = np.mean(intersection_points, axis=0)
-                #     # print(max(intersection_points, key=lambda pt: pt[0])[0])
-                #     # contour_center = (int(max(intersection_points, key=lambda pt: pt[0])[0]), max(0, int(avg_y) + OFFSET))
-                #     highest_point = (max(0, int(row)), max(0, int(col) + OFFSET))
-                #     rc_utils.draw_circle(image, highest_point)
-                #     target_point = (int(highest_point[0] * 0.8 + contour_center[0] * 0.2), int(highest_point[1] * 0.8 + contour_center[1] * 0.2))
-                # else:
-                #     target_point = contour_center
+            # if curve_points is not None:
+            #     # print('max points')
+            #     # print(image.shape)
+            #     # print(np.min(x_coords), np.max(x_coords))
+            #     # print(np.min(y_coords), np.max(y_coords))
+            #     top_indx = np.argmin(curve_points[:, 0, 1])
+            #     top_of_curve = curve_points[top_indx, 0]
+            #     col, row = top_of_curve
+            #     # rc_utils.draw_circle(image, top_of_curve)
+            #     # avg_x, avg_y = np.mean(intersection_points, axis=0)
+            #     # print(max(intersection_points, key=lambda pt: pt[0])[0])
+            #     # contour_center = (int(max(intersection_points, key=lambda pt: pt[0])[0]), max(0, int(avg_y) + OFFSET))
+            #     highest_point = (max(0, int(row)), max(0, int(col) + OFFSET))
+            #     rc_utils.draw_circle(image, highest_point)
+            #     target_point = (int(highest_point[0] * 0.8 + contour_center[0] * 0.2), int(highest_point[1] * 0.8 + contour_center[1] * 0.2))
+            # else:
+            #     target_point = contour_center
 
-                rc_utils.draw_contour(image, max_contour)
-                rc.display.show_text(str(round(target_angle, 2)))
-                # rc_utils.draw_contour(image, middle_contour)
-                cv.putText(image, str(target_angle), (100, 100), cv.FONT_HERSHEY_SIMPLEX, 1.0, (255, 0, 0), 2, cv.LINE_AA)
-                cv.putText(image, str(target_point), (100, 170), cv.FONT_HERSHEY_SIMPLEX, 1.0, (255, 0, 0), 2, cv.LINE_AA)
-                # rc_utils.draw_circle(image, contour_center)
-                rc_utils.draw_circle(image, target_point)
-                cv.line(image, target_point[::-1], (image_shape[1] // 2, image_shape[0]), 255, 30)
-                
-                # cv.polylines(image, [curve_points], isClosed=False, color=(0, 0, 255), thickness=3)
-                # cv.ellipse(image, center_coords, (width, height), 0, 0, 360, 255, 10)
-                # rc_utils.draw_contour(result, max_contour_hsv)
+            rc_utils.draw_contour(image, max_contour)
+            rc.display.show_text(str(round(target_angle, 2)))
+            # rc_utils.draw_contour(image, middle_contour)
+            cv.putText(image, str(target_angle), (100, 100), cv.FONT_HERSHEY_SIMPLEX, 1.0, (255, 0, 0), 2, cv.LINE_AA)
+            cv.putText(image, str(target_point), (100, 170), cv.FONT_HERSHEY_SIMPLEX, 1.0, (255, 0, 0), 2, cv.LINE_AA)
+            # rc_utils.draw_circle(image, contour_center)
+            rc_utils.draw_circle(image, target_point)
+            cv.line(image, target_point[::-1], (image_shape[1] // 2, image_shape[0]), 255, 10)
+            
+            # cv.polylines(image, [curve_points], isClosed=False, color=(0, 0, 255), thickness=3)
+            # cv.ellipse(image, center_coords, (width, height), 0, 0, 360, 255, 10)
+            # rc_utils.draw_contour(result, max_contour_hsv)
 
-            # Display the image to the screen
-            # rc_utils.draw_circle(result, (y, x))
-            # rc.display.show_color_image(image)
-            # cv.imwrite('img_output.png', result)
+        # Display the image to the screen
+        # rc_utils.draw_circle(result, (y, x))
+        # rc.display.show_color_image(image)
+        # cv.imwrite('img_output.png', result)
 
-            if save:
-                cv.imwrite(str(indx) + '_result.png', image)
+        if save:
+            cv.imwrite(str(indx) + '_result.png', image)
 
-            # cv.imwrite('IMG_492' + str(i) + 'FIXED.JPG', image)
-            cv.imwrite('test_img_' + str(i) + '_FIXED.png', image)
-            # cv.imwrite('test_img_13_FIXED.png', image)
+        # cv.imwrite('IMG_492' + str(i) + 'FIXED.JPG', image)
+        # cv.imwrite('test_img_' + str(i) + '_FIXED.png', image)
+        # cv.imwrite('test_img_13_FIXED.png', image)
 
-            indx += 1
+        indx += 1
 
     return target_angle
 
