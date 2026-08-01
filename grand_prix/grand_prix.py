@@ -18,11 +18,11 @@ import racecar_utils as rc_utils
 rc = racecar_core.create_racecar()
 
 # Variables for wall follower
-WINDOW = 100
-RAY_WINDOW = 2
-KP = 0.095 # 0.011
+WINDOW = 100 # 100
+RAY_WINDOW = 2 # 2
+KP = 0.01 # 0.011
 MIN_VALID_DIST = 1
-RANGE = 350 # 125
+RANGE = 125 # 125
 right_max_dist = 0
 left_max_dist = 0
 angle = 0
@@ -182,6 +182,8 @@ def update():
 
     contour_center = update_contour()
     print(contour_center)
+    contour_center = None
+    scan = rc.lidar.get_samples()
     if contour_center is not None: # found a line
         setpoint = rc.camera.get_width() // 2
         present_value = contour_center[1]
@@ -202,8 +204,6 @@ def update():
         error = filtered_error
         speed = rc_utils.remap_range(abs(angle), 0, 1, 0.6, 0.3, saturate=True) # speed control
     else: # Otherwise, wall follow
-        scan = rc.lidar.get_samples()
-
         # get farthest point on left and right in window
         right_window = get_angle_range(scan, 0, WINDOW)
         left_window = get_angle_range(scan, 360 - WINDOW, 360)
@@ -224,10 +224,25 @@ def update():
         target_angle = (right_wt * right_max_dist - left_wt * left_max_dist)/total_dist
         angle = target_angle * KP
         angle = rc_utils.clamp(angle, -1, 1)
-
         # speed controller
-        speed = rc_utils.remap_range(abs(angle), 0, 1, 0.8, 0.3, saturate=True)
+        speed = rc_utils.remap_range(abs(angle), 0, 1, 0.7, 0, saturate=True)
+        #speed = rc_utils.remap_range(abs(total_dist), 0, RANGE*2, 0, 0.7, saturate=True)
+
+
         print(f"{right_angle=}, {left_angle=}, {right_max_dist=}, {left_max_dist=} {target_angle=}")
+        print(f"{speed=}, f{angle=}")
+
+    # Crash protection
+    closest_left_dist, left_angle = rc_utils.get_lidar_closest_point(scan, (240, 360))
+    closest_right_dist, right_angle = rc_utils.get_lidar_closest_point(scan, (0, 120))
+
+    if closest_left_dist < 20 and closest_right_dist < 20 and left_angle > 340 and right_angle < 320:
+        angle = 0
+        speed = -1
+    elif closest_left_dist < 20:
+        speed = -1
+    elif closest_right_dist < 20:
+        speed = -1
 
     rc.drive.set_speed_angle(speed, angle)
 
