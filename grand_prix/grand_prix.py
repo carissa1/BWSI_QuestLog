@@ -182,7 +182,7 @@ def update():
 
     contour_center = update_contour()
     print(contour_center)
-    if contour_center is not None:
+    if contour_center is not None: # found a line
         setpoint = rc.camera.get_width() // 2
         present_value = contour_center[1]
 
@@ -200,22 +200,32 @@ def update():
 
         last_error = filtered_error
         error = filtered_error
-        speed = rc_utils.remap_range(abs(angle), 0, 1, 0.6, 0.3, saturate=True)
-    else:
+        speed = rc_utils.remap_range(abs(angle), 0, 1, 0.6, 0.3, saturate=True) # speed control
+    else: # Otherwise, wall follow
         scan = rc.lidar.get_samples()
+
+        # get farthest point on left and right in window
         right_window = get_angle_range(scan, 0, WINDOW)
         left_window = get_angle_range(scan, 360 - WINDOW, 360)
         right_max_dist, right_angle = get_dist_angle(scan, right_window, 0)
         left_max_dist, left_angle = get_dist_angle(scan, left_window, 360 - WINDOW)
+
+        # change angles to be within 90 and 180 degrees for better ratios
         left_wt = (360 - left_angle) + 90
         right_wt = right_angle + 90
+
+        # correct left and right distance to deal with robot width
         left_dist = left_max_dist - ROBOT_HALF_WIDTH / math.cos(360-left_angle)
         right_dist = right_max_dist - ROBOT_HALF_WIDTH / math.cos(360-right_angle)
         total_dist = right_dist + left_dist
+
+        # get target angle
         target_angle = (right_wt * right_dist - left_wt * left_dist)/total_dist
         target_angle = (right_wt * right_max_dist - left_wt * left_max_dist)/total_dist
         angle = target_angle * KP
         angle = rc_utils.clamp(angle, -1, 1)
+
+        # speed controller
         speed = rc_utils.remap_range(abs(angle), 0, 1, 0.8, 0.3, saturate=True)
         print(f"{right_angle=}, {left_angle=}, {right_max_dist=}, {left_max_dist=} {target_angle=}")
 
