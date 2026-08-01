@@ -1,9 +1,41 @@
+"""
+MIT BWSI Autonomous RACECAR
+MIT License
+racecar-neo-prereq-labs
+
+File Name: lab_i.py
+
+Title: Lab I - Wall Follower
+
+Author: [PLACEHOLDER] << [Write your name or team name here]
+
+Purpose: This script provides the RACECAR with the ability to autonomously follow a wall.
+The script should handle wall following for the right wall, the left wall, both walls, and
+be flexible enough to handle very narrow and very wide walls as well.
+
+Expected Outcome: When the user runs the script, the RACECAR should be fully autonomous
+and drive without the assistance of the user. The RACECAR drives according to the following
+rules:
+- The RACECAR detects a wall using the LIDAR sensor a certain distance and angle away.
+- Ideally, the RACECAR should be a set distance away from a wall, or if two walls are detected,
+should be in the center of the walls.
+- The RACECAR may have different states depending on if it sees only a right wall, only a
+left wall, or both walls.
+- Both speed and angle parameters are variable and recalculated every frame. The speed and angle
+values are sent once at the end of the update() function.
+
+Environment: Test your code using the level "Neo Labs > Lab I: Wall Follower".
+Use the "TAB" key to advance from checkpoint to checkpoint to practice each section before
+running through the race in "race mode" to do the full course. Lowest time wins!
+"""
+
+########################################################################################
+# Imports
+########################################################################################
+
 import sys
 import math
 import csv
-import cv2 as cv
-
-import yaml
 
 # If this file is nested inside a folder in the labs folder, the relative path should
 # be [1, ../../library] instead.
@@ -17,237 +49,247 @@ import racecar_utils as rc_utils
 
 rc = racecar_core.create_racecar()
 
-# Variables for wall follower
-WINDOW = 100 # 100
-RAY_WINDOW = 2 # 2
-KP = 0.01 # 0.011
-MIN_VALID_DIST = 1
-RANGE = 125 # 125
-right_max_dist = 0
-left_max_dist = 0
-angle = 0
-speed = 1
-ROBOT_HALF_WIDTH = 0
+SCAN_WINDOW = 50
+BLIND_WINDOW = 3
+CRITICAL_DIST = 0
+LOOK_AHEAD_DIST = 400
 
-# Variables for line follower
-MIN_CONTOUR_AREA = 700
-CROP_FLOOR = ((250, 0), (rc.camera.get_height(), rc.camera.get_width()))
-speed = 0.0             # The current speed of the car
-angle = 0.0             # The current angle of the car's wheels
-contour_center = None   # The (pixel row, pixel column) of contour
-contour_area = 0        # The area of contour
-indx = 0                # indx number of photos (for debugging)
+KP_WEIGHT = 0.018
+KD_ANGLE = 0.005
+KP_ANGLE = 0.015
+
+# ---- State carried between frames -------------------------------------------------------
+prev_error = 0
+last_speed = 0
+last_angle = 0
+filtered_error = 0
 last_error = 0
-error = 0
-filtered_error = 0      # low pass filter
-prev_angle = 0.0
-last_hash = 0
-last_image = None
 
-# Set tunable constants through config
-with open("config.yaml", "r") as file:
-    config = yaml.safe_load(file)
-    BLUE = (tuple(config['Camera']['BLUE_lower']), tuple(config['Camera']['BLUE_upper']))
-    kp = -config['PID']['kp']
-    kd = -config['PID']['kd']
-    OFFSET = config['Camera']['OFFSET']
-    EDGE_THRESHOLD = config['Camera']['EDGE_THRESHOLD'] # threshold for how close bounding box needs to be to edge
-    ALPHA = config['PID']['ALPHA']
-    MAX_ANGLE_DELTA = config['PID']['MAX_ANGLE_DELTA']
+########################################################################################
+# Functions
+########################################################################################
 
-def is_valid(dist):
-    # checks if distance from wall is above a minimum valid distance
-    return dist is not None and dist > MIN_VALID_DIST
-
-SAMPLES_PER_DEGREE = 720 / 360 # 1080 for real car
-
-# Wall follower
-def get_angle_range(scan, start_deg, end_deg):
-    # get indices for range of angles
-    start_idx = int(start_deg * SAMPLES_PER_DEGREE)
-    end_idx = int(end_deg * SAMPLES_PER_DEGREE)
-    return scan[start_idx:end_idx]
-
-def get_dist_angle (scan, window, window_start_deg):
-    # get farthest distance and its angle within a window
-    if len(window) != 0:
-        idx = window.argmax()
-        angle_deg = window_start_deg + idx / SAMPLES_PER_DEGREE
-        max_dist = rc_utils.get_lidar_average_distance(scan, angle_deg, RAY_WINDOW)
-        if max_dist > RANGE:
-            max_dist = RANGE
-        return max_dist, angle_deg
-
-# Line follower
-def update_contour(save = False):
-    global contour_area
-    global indx
-
-    image = rc.camera.get_color_image()
-
-    # for i in range(1, 16): # TESTINGx
-    # image = cv.imread('test_img_' + str(i) + '.png')
-    # image = cv.imread('IMG_492' + str(i) + '.JPG')
-    # image = cv.imread('test_img_1.png')
-    target_point = None
-    target_angle = None
-
-    if image is None:
-        contour_center = None
-        contour_area = 0
-    else:
-        # Crop the image to the floor directly in front of the car
-        image = rc_utils.crop(image, CROP_FLOOR[0], CROP_FLOOR[1])
-
-        if save:
-            cv.imwrite(str(indx) + '_photo.png', image)
-
-        # Change to hsv
-        hsv = cv.cvtColor(image, cv.COLOR_BGR2HSV)
-        blurred_hsv = cv.blur(hsv, (10, 10))
-
-        # Use blue mask and glare mask to find the line
-        glare_mask = cv.inRange(blurred_hsv, (0, 0, 240), (179, 40, 255))  
-        kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (80, 80))
-        glare_mask = cv.dilate(glare_mask, kernel, iterations=1)
-        # cv.imwrite('img_glare.png', glare_mask)
-        color_mask = cv.inRange(blurred_hsv, BLUE[0], BLUE[1])
-        # cv.imwrite('img_color.png', color_mask)
-        mask = cv.bitwise_and(color_mask, cv.bitwise_not(glare_mask))
-        result = cv.bitwise_and(image, image, mask=mask)
-        # cv.imwrite('img_mask.png', result)
-
-        # Get the maximum contour
-        max_contour = []
-        contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-        img_h, img_w = image.shape[:2]
-        for contour in contours:
-            # Check if the contour is touching two edges (creating a line)
-            if cv.contourArea(contour) > MIN_CONTOUR_AREA:
-                x, y, cw, ch = cv.boundingRect(contour)
-                # print(x, y, cw, ch)
-                # print(x + cw, y + ch, img_w, img_h)
-                num_edges = 0
-                if x <= EDGE_THRESHOLD:
-                    num_edges += 1
-                if y <= EDGE_THRESHOLD:
-                    num_edges += 1
-                if x + cw >= img_w - EDGE_THRESHOLD:
-                    num_edges += 1
-                if y + ch >= img_h - EDGE_THRESHOLD:
-                    num_edges += 1
-                cv.rectangle(image, (x, y), (x+cw, y+ch), (0, 0, 255), 2) 
-                # print(num_edges)
-                if num_edges >= 2:
-                    if len(max_contour) == 0:
-                        max_contour = contour
-                    elif cv.contourArea(contour) > cv.contourArea(max_contour):
-                        max_contour = contour
-
-        # Find contour center
-        contour_center = None
-        if len(max_contour) > 0:
-            contour_center = rc_utils.get_contour_center(max_contour)
-            contour_center = (contour_center[0], contour_center[1] + OFFSET)
-            if contour_center[1] < 1:
-                contour_center = (contour_center[0], 0)
-
-            # print(contour_center)
-
-            rc_utils.draw_contour(image, max_contour)
-            rc_utils.draw_circle(image, contour_center)
-            if save:
-                cv.imwrite(str(indx) + '_result.png', image)
-            indx += 1
-    return contour_center
-
-def start ():
+# [FUNCTION] The start function is run once every time the start button is pressed
+def start():
+    global prev_error, last_speed, last_angle
+    prev_error = 0
+    last_speed = 0
+    last_angle = 0
     rc.drive.set_speed_angle(0, 0)
-    rc.drive.set_max_speed(1)
-    data = ['Speed', 'Angle', 'Error', 'lidar_left', 'lidar_right']
+    data = ['Speed', 'Angle', 'Error', 'lidar_left', 'lidar_right', 'weight_left', 'weight_right']
+
     with open('log_wall.csv', mode='w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow(data)
 
+
+
+# def is_valid(dist):
+    
+#     return dist is not None and dist > MIN_VALID_DIST
+
+
+# def get_wall_reading(scan, side_angle, front_angle, theta_deg):
+#     b = rc_utils.get_lidar_average_distance(scan, side_angle, WINDOW_ANGLE)
+#     a = rc_utils.get_lidar_average_distance(scan, front_angle, WINDOW_ANGLE)
+
+#     if not is_valid(a) or not is_valid(b):
+#         return None, None
+
+#     theta = math.radians(theta_deg)
+#     alpha = math.atan2(a * math.cos(theta) - b, a * math.sin(theta))
+
+#     current_dist = b * math.cos(alpha)
+#     predicted_dist = current_dist + LOOKAHEAD * math.sin(alpha)
+
+#     return current_dist, predicted_dist
+
+def get_lidar_dist(scan):
+    LEN_SCAN = 1080  # 1080
+    # print(scan)
+    new_scan = [200]*LEN_SCAN
+
+    # Find farthest point on right side
+    max_right = 0
+    max_right_indx = 0
+    max_right_angle = 0
+    for i in range(BLIND_WINDOW, LEN_SCAN//4):
+        if scan[i] > max_right:
+            max_right = scan[i]
+            max_right_indx = i
+            max_right_angle = i * 360 / LEN_SCAN
+        # if scan[i] < 1:
+        #     max_right = LOOK_AHEAD_DIST
+        #     max_right_indx = i
+        #     max_right_angle = i * 360 / LEN_SCAN
+    
+    # Get average distance within a window
+    window_left = SCAN_WINDOW // 2
+    window_right = SCAN_WINDOW // 2
+    if max_right_indx + window_right > LEN_SCAN:
+        window_right = LEN_SCAN - max_right_indx
+        window_left += SCAN_WINDOW // 2 - (LEN_SCAN - max_right_indx)
+    elif max_right_indx - window_left < 0:
+        window_right += max_right_indx
+        window_left -= max_right_indx
+    avg_right_dist = 0
+    for i in range(max_right_indx - window_left, max_right_indx + window_right):
+        avg_right_dist += scan[i]
+    avg_right_dist /= window_left + window_right
+    # avg_right_dist = rc_utils.get_lidar_average_distance(scan, max_right_angle, SCAN_WINDOW)
+
+    # print(avg_right_dist)
+    if avg_right_dist > LOOK_AHEAD_DIST:
+        avg_right_dist = LOOK_AHEAD_DIST
+
+    # Find farthest point on left side
+    max_left = 0
+    max_left_indx = 0
+    max_left_angle = 0
+    for i in range(3*LEN_SCAN//4, LEN_SCAN -  BLIND_WINDOW): # Right side 
+        if scan[i] > max_left:
+            max_left = scan[i]
+            max_left_indx = i
+            max_left_angle = i * 360 / LEN_SCAN
+        # if scan[i] < 1:
+        #     max_left = LOOK_AHEAD_DIST
+        #     max_left_indx = i
+        #     max_left_angle = i * 360 / LEN_SCAN
+    
+    # Get average distance within a window
+    window_left = SCAN_WINDOW // 2
+    window_right = SCAN_WINDOW // 2
+    if max_left_indx + window_right > LEN_SCAN:
+        window_right = LEN_SCAN - max_left_indx
+        window_left += SCAN_WINDOW // 2 - (LEN_SCAN - max_left_indx)
+    if max_left_indx - window_left < 0:
+        window_right += max_left_indx
+        window_left -= max_left_indx
+    avg_left_dist = 0
+    for i in range(max_left_indx - window_left, max_left_indx + window_right):
+        avg_left_dist += scan[i]
+    avg_left_dist /= window_left + window_right
+
+    # print(avg_left_dist)
+    if avg_left_dist > LOOK_AHEAD_DIST:
+        avg_left_dist = LOOK_AHEAD_DIST
+
+    # avg_left_dist = rc_utils.get_lidar_average_distance(scan, max_left_angle, SCAN_WINDOW)
+
+    print("   RIGHT: ", avg_right_dist, max_right_angle)
+    print("   LEFT: ", avg_left_dist, max_left_angle)
+    print("   WINDOW: ", window_left, window_right)
+    f = open('scan.txt', 'w')
+    f.write(str(scan))
+
+    return avg_right_dist, max_right_angle, avg_left_dist, max_left_angle
+
+# [FUNCTION] After start() is run, this function is run once every frame (ideally at
+# 60 frames per second or slower depending on processing speed) until the back button
+# is pressed
 def update():
-    global WINDOW
-    global speed
-    global angle
-    global last_error
-    global error
-    global kp
-    global kd
-    global prev_angle
-    global filtered_error
+    global prev_error, last_speed, last_angle, filtered_error, last_error
 
-    contour_center = update_contour()
-    print(contour_center)
-    contour_center = None
     scan = rc.lidar.get_samples()
-    if contour_center is not None: # found a line
-        setpoint = rc.camera.get_width() // 2
-        present_value = contour_center[1]
 
-        raw_error = setpoint - present_value
+    rc.drive.set_max_speed(1)
 
-        # Low-pass filter
-        filtered_error = ALPHA * raw_error + (1 - ALPHA) * filtered_error
+    # right_dist, right_pred = get_wall_reading(scan, RIGHT_SIDE_ANGLE, RIGHT_FRONT_ANGLE, DELTA_ANGLE)
+    # left_dist, left_pred = get_wall_reading(scan, LEFT_SIDE_ANGLE, LEFT_FRONT_ANGLE, DELTA_ANGLE)
 
-        angle = kp * filtered_error + kd * (filtered_error - last_error) / rc.get_delta_time()
-        angle = rc_utils.clamp(angle, -1, 1)
+    right_dist, right_angle, left_dist, left_angle = get_lidar_dist(scan)
 
-        # Slew-rate limit: cap how much angle can change in one frame
-        angle = rc_utils.clamp(angle, prev_angle - MAX_ANGLE_DELTA, prev_angle + MAX_ANGLE_DELTA)
-        prev_angle = angle
+    front_angle, front_dist = rc_utils.get_lidar_closest_point(scan, (330, 30))
+    print("   FRONT_DIST: ", front_dist, front_angle)
 
-        last_error = filtered_error
-        error = filtered_error
-        speed = rc_utils.remap_range(abs(angle), 0, 1, 0.6, 0.3, saturate=True) # speed control
-    else: # Otherwise, wall follow
-        # get farthest point on left and right in window
-        right_window = get_angle_range(scan, 0, WINDOW)
-        left_window = get_angle_range(scan, 360 - WINDOW, 360)
-        right_max_dist, right_angle = get_dist_angle(scan, right_window, 0)
-        left_max_dist, left_angle = get_dist_angle(scan, left_window, 360 - WINDOW)
+    # have_right = right_dist is not None
+    # have_left = left_dist is not None
 
-        # change angles to be within 90 and 180 degrees for better ratios
-        left_wt = (360 - left_angle) + 90
-        right_wt = right_angle + 90
+    # EATS Algorithm
+    if front_dist > CRITICAL_DIST:
+        dist_diff = right_dist - left_dist
+        delta_weight = abs(dist_diff * KP_WEIGHT)
+        delta_weight = rc_utils.clamp(delta_weight, 0, 0.4)
 
-        # correct left and right distance to deal with robot width
-        left_dist = left_max_dist - ROBOT_HALF_WIDTH / math.cos(360-left_angle)
-        right_dist = right_max_dist - ROBOT_HALF_WIDTH / math.cos(360-right_angle)
-        total_dist = right_dist + left_dist
+        weight_R = 0.5
+        weight_L = 0.5
+        if right_dist < left_dist:
+            weight_R -= delta_weight
+            weight_L += delta_weight
+        elif right_dist > left_dist:
+            weight_R += delta_weight
+            weight_L -= delta_weight
 
-        # get target angle
-        target_angle = (right_wt * right_dist - left_wt * left_dist)/total_dist
-        target_angle = (right_wt * right_max_dist - left_wt * left_max_dist)/total_dist
-        angle = target_angle * KP
-        angle = rc_utils.clamp(angle, -1, 1)
-        # speed controller
-        speed = rc_utils.remap_range(abs(angle), 0, 1, 0.7, 0, saturate=True)
-        #speed = rc_utils.remap_range(abs(total_dist), 0, RANGE*2, 0, 0.7, saturate=True)
+        weight_L = rc_utils.clamp(weight_L, 0, 1)
+        weight_R = rc_utils.clamp(weight_R, 0, 1)
 
+        print("   WEIGHT: ", delta_weight, weight_R, weight_L)
+        # error = (right_angle * right_dist - (360 - left_angle) * left_dist)/ (left_dist + right_dist)
+        # error = right_dist * weight_R - left_dist * weight_L
+        error = right_angle * weight_R - (360 - left_angle)* weight_L
+        # c_angle = 360 - left_angle + right_angle
+        # c = math.sqrt(left_dist**2 + right_dist**2 - 2*right_dist*left_dist*math.cos(c_angle))
+        # error = c * (right_angle / c_angle) - c * ((360 - left_angle) / c_angle)
+        # print("   ", c_angle, c)
+        # print("   ", c * (right_angle / c_angle))
+        # print("   ", c * ((360 - left_angle) / c_angle))
+        # print("   ", error)
+        angle = error * KP_ANGLE + (error - last_error)/rc.get_delta_time() * KD_ANGLE
+        last_error = error
 
-        print(f"{right_angle=}, {left_angle=}, {right_max_dist=}, {left_max_dist=} {target_angle=}")
-        print(f"{speed=}, f{angle=}")
+    else:
+        error = 10
+        if front_angle > 180: # turn right
+            angle = 0.2
+        else: # turn left
+            angle = -0.2
+        
+    angle = rc_utils.clamp(angle, -1, 1)
+    speed = rc_utils.remap_range(abs(angle), 0, 1, 1, 0.25, saturate=True)
+    # speed = 0.3
 
-    # Crash protection
-    closest_left_dist, left_angle = rc_utils.get_lidar_closest_point(scan, (240, 360))
-    closest_right_dist, right_angle = rc_utils.get_lidar_closest_point(scan, (0, 120))
+    # image = rc.camera.get_color_image()
+    # markers = cv.aruco.detectMarkers() # marker_type=cv.aruco.DICT_5X5_250
+    # if len(markers) >= 1 and markers[0].get_id() == 0:
+    #     angle = 1
 
-    if closest_left_dist < 20 and closest_right_dist < 20 and left_angle > 340 and right_angle < 320:
-        angle = 0
-        speed = -1
-    elif closest_left_dist < 20:
-        speed = -1
-    elif closest_right_dist < 20:
-        speed = -1
+    # if right_dist is None:
+    #     angle = 0.65
+    # elif left_dist is None:
+    #     angle = -0.65
+    # elif right_dist - left_dist > 60:
+    #     angle = 0.65
+    
+    # rt = rc.controller.get_trigger(rc.controller.Trigger.RIGHT)
+    # lt = rc.controller.get_trigger(rc.controller.Trigger.LEFT)
+    # if rt > 0.2:
+    #     angle = 0.6
+    # if lt > 0.2:
+    #     angle = -0.6
 
+    # if right_dist > 380 and left_dist > 380 and right_angle < 30 and left_angle > 330:
+    #     print("TUNNEL")
+    #     angle = ((360 - left_angle) - right_angle) * KP_ANGLE
+    #     angle = rc_utils.clamp(angle, -1, 1)
+
+    last_speed, last_angle = speed, angle
     rc.drive.set_speed_angle(speed, angle)
+    print("Speed: ", speed, " Angle:", angle)
+    # print(f"right={right_dist}  left={left_dist} front={front_dist}")
+
+    data = [speed, angle, error, left_dist, right_dist]
+
+    with open('log_wall.csv', mode='a', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(data)
 
 def update_slow():
-    update_contour(True)
+    # print(f"speed={last_speed}  angle={last_angle}  err={prev_error:.1f}")
+    pass
+
+########################################################################################
+# DO NOT MODIFY: Register start and update and begin execution
+########################################################################################
 
 if __name__ == "__main__":
     rc.set_start_update(start, update, update_slow)
