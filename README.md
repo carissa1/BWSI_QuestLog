@@ -5,22 +5,25 @@ This repository is for all Python programs used to complete BWSI RACECAR Quest L
 
 There are multiple versions in each trial file for each method or algorithm we attempted to implement.
 
-Files are named after the template "Team5_Trial#_Version_Name". The finalized code for each challenge is named "Final_Team5_Trial#_Version_Name.
+Files are named after the template "Team5_Trial#_Version_Name". The finalized code for each challenge is named "Current_Team5_Trial#_Version_Name.
 
-testing and old codes for BWSI quest log
 
-**to run the attitude node paste these into the terminal**
 
-cd ~/ros2_ws
+**Installations Needed**
 
-source install/setup.bash
+1. RACECAR simulator
+2. Python version 3.9 or above
+3. WSL2 and Ubuntu 22.04 (for Windows users)
+4. XServer (for Windows users)
 
-ros2 run racecar_neo_ros2_driver attitude_node
 
-**In another terminal**
+**Connecting to the RACECAR**
 
-cd ~/ros2_ws
+1. Connect to racecar-neo-5 wifi (password: racecar@mit)
+2. Enter 10.42.0.1:8888 into browser to open the Jupyter Notebook
+3. Upload or paste in code
+4. Open terminal and run "python3 filename.py"
 
-source install/setup.bash
 
-ros2 topic echo /attitude
+
+**Contributions are only open to Team 5 members.**
