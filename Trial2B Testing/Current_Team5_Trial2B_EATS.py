@@ -15,8 +15,8 @@ import racecar_utils as rc_utils
 rc = racecar_core.create_racecar()
 
 WINDOW = 100
-RAY_WINDOW = 2
-KP = 0.011
+RAY_WINDOW = 1
+KP = 0.015
 MIN_VALID_DIST = 1
 RANGE = 125
 right_max_dist = 0
