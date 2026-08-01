@@ -235,8 +235,8 @@ def update():
         prev_angle = angle
 
         chosen_dist = float(valid_fov[best_idx])
-        speed_from_angle = rc_utils.remap_range(abs(angle), 0, 1, 1, 0.2, saturate=True)
-        speed_from_dist = rc_utils.remap_range(chosen_dist, 20, RANGE, 0.2, 1, saturate=True)
+        speed_from_angle = rc_utils.remap_range(abs(angle), 0, 1, 0.7, 0.2, saturate=True)
+        speed_from_dist = rc_utils.remap_range(chosen_dist, 20, RANGE, 0.2, 0.7, saturate=True)
         speed = min(speed_from_angle, speed_from_dist)  # slow for whichever is more conservative
 
         print(f"{best_idx=}, {target_deg=}, {chosen_dist=}, {angle=}")
