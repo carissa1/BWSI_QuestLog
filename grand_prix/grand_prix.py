@@ -54,9 +54,9 @@ BLIND_WINDOW = 3
 CRITICAL_DIST = 0
 LOOK_AHEAD_DIST = 400
 
-KP_WEIGHT = 0.018
-KD_ANGLE = 0.005
-KP_ANGLE = 0.015
+KP_WEIGHT = 0.015
+KD_ANGLE = 0.0055
+KP_ANGLE = 0.018
 
 # ---- State carried between frames -------------------------------------------------------
 prev_error = 0
@@ -166,7 +166,7 @@ def get_lidar_dist(scan):
         window_right += max_left_indx
         window_left -= max_left_indx
     avg_left_dist = 0
-    for i in range(max_left_indx - window_left, max_left_indx + window_right):
+    for i in range(max(0, max_left_indx - window_left), min(max_left_indx + window_right, 1080)):
         avg_left_dist += scan[i]
     avg_left_dist /= window_left + window_right
 
@@ -245,7 +245,7 @@ def update():
             angle = -0.2
         
     angle = rc_utils.clamp(angle, -1, 1)
-    speed = rc_utils.remap_range(abs(angle), 0, 1, 1, 0.25, saturate=True)
+    speed = rc_utils.remap_range(abs(angle), 0, 1, 1, 0.2, saturate=True)
     # speed = 0.3
 
     # image = rc.camera.get_color_image()
@@ -267,7 +267,7 @@ def update():
     # if lt > 0.2:
     #     angle = -0.6
 
-    # if right_dist > 380 and left_dist > 380 and right_angle < 30 and left_angle > 330:
+    # if right_dist > 380 and left_dist > 380 and right_angle < 8 and left_angle > 352:
     #     print("TUNNEL")
     #     angle = ((360 - left_angle) - right_angle) * KP_ANGLE
     #     angle = rc_utils.clamp(angle, -1, 1)
