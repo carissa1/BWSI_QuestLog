@@ -1,4 +1,4 @@
-# BWSI_QuestLog_Testing
+# BWSI_QuestLog
 
 
 This repository is for all Python programs used to complete BWSI RACECAR Quest Log challenges. 
