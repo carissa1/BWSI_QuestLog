@@ -1,7 +1,7 @@
-# BWSI_QuestLog
+# BWSI_RACECAR_Team_5
 
 
-This repository is for all Python programs used to complete BWSI RACECAR Quest Log challenges. 
+This repository is for all Python programs used to complete BWSI RACECAR Quest Log challenges and the grand prix for team 5. 
 
 There are multiple versions in each trial file for each method or algorithm we attempted to implement.
 
